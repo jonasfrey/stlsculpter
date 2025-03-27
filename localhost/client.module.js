@@ -228,7 +228,8 @@ let a_o_function = [
                         return f_o_reg_poly(
                             f_o_vec(0,0,n_it*n_layer_height_mm),
                             n_rotation_radians,
-                            n_radius_bottom+(n_it_nor*n_radius_top),
+                            n_radius_bottom
+                                +(n_it_nor*(n_radius_top-n_radius_bottom)),
                             n_corners,
                             n_layer_height_mm 
                         )
@@ -240,44 +241,79 @@ let a_o_function = [
         }
     ),
     f_o_function(
-        'polygon_test', 
+        'convex_hull_algo', 
         function(){
-            let ov = f_ov({
-                n_its: {n_min: 3, n_max: 10, n: 10},
-                n_amp: 20,
-            });
+            // this is an example for a shape that is made  of random points, only the vertices on the convex hull is taken
             let n_tau = Math.PI*2;
+            let n_radius_base = 30.;
             let a_o_p = [
-                ...new Array(ov.n_its.n).fill(0).map(
+                // a flat base layer 
+                ...new Array(100).fill(0).map(
+                    (v, n_idx)=>{
+                        let n_it = parseInt(n_idx);
+                        let n_it_nor = n_it / 100.;
+                        return f_o_vec(
+                            Math.sin(n_it_nor*n_tau)*n_radius_base, 
+                            Math.cos(n_it_nor*n_tau)*n_radius_base,
+                            0//zero for base layer
+                        )
+                    }
+                ),
+                //random points
+                ...new Array(100).fill(0).map(
                     (n, n_idx)=>{
-                        let n_it = parseFloat(n_idx)
-                        let n_it_nor = n_it/ov.n_its.n;
-                        let n_corners = 5.;
-                        let n_radius = 5.;
-                        return f_a_o_p_reg_poly(
-                            f_o_vec(0,0,n_it_nor*10),
-                            n_corners, 
-                            n_radius,
-                            n_it_nor*n_tau
+                        return f_o_vec(
+                            (Math.random()-.5)*50,
+                            (Math.random()-.5)*50,
+                            (Math.random())*50,
                         )
                     }
                 )
             ].flat()
-            
-            // Convert your points to Three.js Vector3 array
-            const a_ovec = a_o_p.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));
-            
-            // Create the convex hull geometry
+            const a_ovec = a_o_p.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));            
             const geometry = new ConvexGeometry(a_ovec);
-            // const shape = new THREE.Shape(a_ovec);
-            // const geometry = new THREE.ExtrudeGeometry(shape, {
-            //     depth: 0.1, // Small extrusion for 2D→3D
-            //     bevelEnabled: false
-            // });
-            
-            // Create mesh with the desired material
             return [f_o_shaded_mesh(geometry)];
-
+        }
+    ),
+    f_o_function(
+        'cubes_example', 
+        function(){
+            // this is an example for a shape that is made  of random points, only the vertices on the convex hull is taken
+            let n_tau = Math.PI*2;
+            let n_radius_base = 30.;
+            let n_layers = 20;
+            let n_cubes = 20;
+            let n_amp = 10.;
+            let a_o = [
+                // a flat base layer 
+                ...new Array(n_layers).fill(0).map(
+                    (v, n_idx)=>{
+                        let n_it = parseInt(n_idx);
+                        let n_it_nor = n_it / n_layers;
+                        return new Array(n_cubes).fill(0).map(
+                            (v, n_idx)=>{
+                                let n_it2 = parseInt(n_idx);
+                                let n_it_nor2 = n_it2 / n_cubes;
+                                let o_box = new THREE.BoxGeometry( 4,4,4); 
+                                
+                                let o_mesh = f_o_shaded_mesh(o_box);
+                                o_mesh.position.set(
+                                    Math.sin(n_tau*n_it_nor2)*n_amp,
+                                    Math.cos(n_tau*n_it_nor2)*n_amp,
+                                    n_it_nor*100
+                                )
+                                o_mesh.rotation.set(
+                                    Math.random(),
+                                    Math.random(),
+                                    Math.random(),
+                                )
+                                return o_mesh
+                            }
+                        )
+                    }
+                ).flat(),
+            ].flat()
+            return a_o
         }
     )
 ]
