@@ -284,6 +284,7 @@ let a_o_function = [
             let n_layers = 20;
             let n_cubes = 20;
             let n_amp = 10.;
+            let n_height = 100;
             let a_o = [
                 // a flat base layer 
                 ...new Array(n_layers).fill(0).map(
@@ -300,12 +301,15 @@ let a_o_function = [
                                 o_mesh.position.set(
                                     Math.sin(n_tau*n_it_nor2)*n_amp,
                                     Math.cos(n_tau*n_it_nor2)*n_amp,
-                                    n_it_nor*100
+                                    n_it_nor*n_height
                                 )
                                 o_mesh.rotation.set(
-                                    Math.random(),
-                                    Math.random(),
-                                    Math.random(),
+                                    n_tau*n_it_nor2,
+                                    0,
+                                    0,
+                                    // Math.random(),
+                                    // Math.random(),
+                                    // Math.random(),
                                 )
                                 return o_mesh
                             }
@@ -313,6 +317,18 @@ let a_o_function = [
                     }
                 ).flat(),
             ].flat()
+            // Create cylinder geometry
+            const geometry = new THREE.CylinderGeometry(
+                n_amp,     // radiusTop
+                n_amp,     // radiusBottom
+                n_height,     // height
+                32     // radialSegments (smoothness)
+            );
+            let o_cylinder = f_o_shaded_mesh(geometry);
+            o_cylinder.rotation.set(n_tau/4,0,0)
+            o_cylinder.position.set(0,0,n_height/2);
+            globalThis.o_cylinder = o_cylinder
+            a_o.push(o_cylinder)
             return a_o
         }
     )
