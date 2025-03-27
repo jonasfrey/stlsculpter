@@ -12,9 +12,9 @@ import {
 } from "https://deno.land/x/handyhelpers@5.2.3/mod.js"
 
 import * as THREE from '/three.js-r126/build/three.module.js';
-// import { OrbitControls } from '/three/OrbitControls.js';
 import { OrbitControls } from '/three.js-r126/examples/jsm/controls/OrbitControls.js';
 import { STLExporter } from '/three.js-r126/examples/jsm/exporters/STLExporter.js';
+import { ConvexGeometry } from '/three.js-r126/examples/jsm/geometries/ConvexGeometry.js';
 // import { STLExporter } from '/three/STLExporter.js';
 // if you need more addons/examples download from here...
 //  
@@ -78,15 +78,23 @@ let f_o_circle = function(o_trn, n_radius){return {o_trn, n_radius}}
 let n_tau = Math.PI*2;
 
 let f_a_o_p_reg_poly = function(
+    o_trn,
     n_corners, 
-    n_amp
+    n_amp, 
+    n_radians_rotation
 ){
     let a_o = new Array(n_corners).fill(0).map((v, n_idx)=>{
         let n_it_nor = parseFloat(n_idx)/n_corners;
-        return f_o_vec(
-            Math.sin(n_tau*n_it_nor)*n_amp,
-            Math.cos(n_tau*n_it_nor)*n_amp,
+        let o_trn2 = f_o_vec(
+            Math.sin(n_tau*n_it_nor+n_radians_rotation)*n_amp,
+            Math.cos(n_tau*n_it_nor+n_radians_rotation)*n_amp,
+            0,
         )
+        return f_o_vec(
+            o_trn.n_x+o_trn2.n_x,
+            o_trn.n_y+o_trn2.n_y,
+            o_trn.n_z+o_trn2.n_z,
+        );
     });
     return a_o
 }
@@ -107,9 +115,14 @@ let f_o_reg_poly = function(
     n_corners, 
     n_extrusion
 ){
-    let a_o = f_a_o_p_reg_poly(n_corners, n_radius)
+    let a_o = f_a_o_p_reg_poly(
+        o_trn,
+        n_corners, 
+        n_radius, 
+        0.,//n_rot_radians
+    )
     // Convert your points to Three.js Vector2 array
-    const a_o_point = a_o.map(o => new THREE.Vector2(o.n_x, o.n_y));
+    const a_o_point = a_o.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));
     // Create a shape from the points
     const o_shape = new THREE.Shape(a_o_point);
 
@@ -124,7 +137,7 @@ let f_o_reg_poly = function(
 
     // Create a mesh with the geometry and a material
     const mesh = new THREE.Mesh(geometry, o_material);
-
+    
     // Apply translation if o_trn is provided
     if (o_trn) {
         mesh.position.set(
@@ -138,7 +151,7 @@ let f_o_reg_poly = function(
     if (n_rot_radians !== undefined) {
         mesh.rotation.z = n_rot_radians; // Rotate around Z-axis
     }
-    
+
     return mesh
 }
 let f_o_function = function(
@@ -150,31 +163,121 @@ let f_o_function = function(
         s_function : f_function.toString()
     }
 }
+let f_o_shaded_mesh = function(
+    o_geometry,
+    n_color = 0x6bb9f2,
+    n_edge_color = 0x000000,
+    n_edge_width = 1
+){
+    // 1. Create the shaded material (Phong for nice lighting)
+    const o_shaded_material = new THREE.MeshPhongMaterial({
+        color: n_color,
+        specular: 0x111111,
+        shininess: 30,
+        flatShading: false,
+        side: THREE.DoubleSide
+    });
+    
+    // 2. Create the wireframe material
+    const o_wire_material = new THREE.MeshBasicMaterial({
+        color: n_edge_color,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    // 3. Create the edge lines (cleaner than wireframe material)
+    const o_edges = new THREE.EdgesGeometry(o_geometry);
+    const o_line_material = new THREE.LineBasicMaterial({ 
+        color: n_edge_color, 
+        linewidth: n_edge_width 
+    });
+    const o_edge_lines = new THREE.LineSegments(o_edges, o_line_material);
+    
+    // 4. Create the shaded mesh
+    const o_shaded_mesh = new THREE.Mesh(o_geometry, o_shaded_material);
+    
+    // 5. Combine in a group
+    const o_group = new THREE.Group();
+    o_group.add(o_shaded_mesh);
+    o_group.add(o_edge_lines);
+    
+    return o_group;
+};
 let a_o_function = [
     f_o_function(
-        'polygon_test', 
+        'example_vase_with_layers', 
         function(){
-            let ov = f_ov({
-                n_its: {n_min: 3, n_max: 100, n: 100},
-                n_amp: 20,
-            });
+            // let ov = f_ov({
+            //     n_its: {n_min: 3, n_max: 10, n: 10},
+            //     n_amp: 20,
+            // });
             let n_tau = Math.PI*2;
-            return [
-                ...new Array(ov.n_its.n).fill(0).map(
+            let n_layer_height_mm = 0.2/2.;///2. for more precision, subsampling
+            let n_radius_bottom = 28.; 
+            let n_radius_top = 30.;
+            let n_height = 60.;
+            let n_corners = 5.;
+            let n_its = n_height / n_layer_height_mm;
+            let a_o = [
+                ...new Array(n_its).fill(0).map(
                     (n, n_idx)=>{
                         let n_it = parseFloat(n_idx)
-                        let n_it_nor = n_it/ov.n_its.n;
-                        let n_z = n_it_nor*22;
+                        let n_it_nor = n_it/n_its;
+                        let n_rotation_radians = n_it_nor*n_tau/5;
                         return f_o_reg_poly(
-                            f_o_vec(0,0,n_it*0.2),
-                            n_it_nor*n_tau*0.2,// rotation as radians
-                            10.,//radius  
-                            5., // corners
-                            0.2, // extrusion in z axis
+                            f_o_vec(0,0,n_it*n_layer_height_mm),
+                            n_rotation_radians,
+                            n_radius_bottom+(n_it_nor*n_radius_top),
+                            n_corners,
+                            n_layer_height_mm 
                         )
                     }
                 )
             ]
+            return a_o
+
+        }
+    ),
+    f_o_function(
+        'polygon_test', 
+        function(){
+            let ov = f_ov({
+                n_its: {n_min: 3, n_max: 10, n: 10},
+                n_amp: 20,
+            });
+            let n_tau = Math.PI*2;
+            let a_o_p = [
+                ...new Array(ov.n_its.n).fill(0).map(
+                    (n, n_idx)=>{
+                        let n_it = parseFloat(n_idx)
+                        let n_it_nor = n_it/ov.n_its.n;
+                        let n_corners = 5.;
+                        let n_radius = 5.;
+                        return f_a_o_p_reg_poly(
+                            f_o_vec(0,0,n_it_nor*10),
+                            n_corners, 
+                            n_radius,
+                            n_it_nor*n_tau
+                        )
+                    }
+                )
+            ].flat()
+            
+            // Convert your points to Three.js Vector3 array
+            const a_ovec = a_o_p.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));
+            
+            // Create the convex hull geometry
+            const geometry = new ConvexGeometry(a_ovec);
+            // const shape = new THREE.Shape(a_ovec);
+            // const geometry = new THREE.ExtrudeGeometry(shape, {
+            //     depth: 0.1, // Small extrusion for 2D→3D
+            //     bevelEnabled: false
+            // });
+            
+            // Create mesh with the desired material
+            return [f_o_shaded_mesh(geometry)];
+
         }
     )
 ]
@@ -388,45 +491,62 @@ function f_export_stl() {
 
 
 function createThreeJSObjects(a_o_mesh) {
-    // Clear existing objects (keep lights)
-    o_scene.children.slice().forEach(o_child => {
-        if (!(o_child instanceof THREE.Light)) o_scene.remove(o_child);
-    });
+    // Clear only the world group, not the entire scene
+    while(o_world_group.children.length) {
+        o_world_group.remove(o_world_group.children[0]);
+    }
 
     a_o_mesh.forEach(o=>{
-        o_scene.add(o)
+        o_world_group.add(o)
+        // o_scene.add(o)
     })
 
-    f_fit_camera_to_object(o_camera, o_scene, o_renderer);
+    fitCameraToGroup(o_camera, o_world_group);
 }
 
 
-
-function f_fit_camera_to_object(o_camera, o_scene) {
-    const box = new THREE.Box3().setFromObject(o_scene);
+function fitCameraToGroup(camera, group, offsetFactor = 1.2) {
+    // 1. Create a bounding box that contains all objects in the group
+    const box = new THREE.Box3().setFromObject(group);
+    
+    // 2. Get the center of the group
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    
+    // 3. Get the size of the group
     const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
     
-    // Find the maximum dimension
-    const maxDim = Math.max(size.x, size.y);
-    const fov = o_camera.fov * (Math.PI / 180);
-    let o_cameraZ = Math.abs(maxDim / 2 * Math.tan(fov * 2));
+    // 4. Calculate optimal camera distance
+    const fov = camera.fov * (Math.PI / 180);
+    let cameraZ = Math.abs(maxDim / Math.sin(fov / 2)) * offsetFactor;
     
-    // Add some padding
-    o_cameraZ *= 1.5;
+    // For orthographic camera (if you're using one)
+    if (camera.isOrthographicCamera) {
+        cameraZ = maxDim * offsetFactor;
+        camera.left = -size.x / 2 * offsetFactor;
+        camera.right = size.x / 2 * offsetFactor;
+        camera.top = size.y / 2 * offsetFactor;
+        camera.bottom = -size.y / 2 * offsetFactor;
+        camera.near = -cameraZ * 10;
+        camera.far = cameraZ * 10;
+    }
     
-    o_camera.position.z = o_cameraZ;
-    o_camera.position.x = center.x;
-    o_camera.position.y = center.y;
+    // 5. Position the camera
+    camera.position.copy(center);
+    camera.position.z += cameraZ;
     
-    o_camera.lookAt(center);
+    // 6. Make the camera look at the center
+    camera.lookAt(center);
     
-    // Update controls if they exist
-    if (o_controls) {
-        o_controls.target.copy(center);
-        o_controls.update();
+    // 7. Update camera and controls if needed
+    camera.updateProjectionMatrix();
+    if (typeof controls !== 'undefined') {
+        controls.target.copy(center);
+        controls.update();
     }
 }
+
 // Function to create a regular polygon
 function createRegularPolygon(x, y, radius, corners, n_offset_radians = 0) {
     const vertices = [];
@@ -532,7 +652,12 @@ const o_scene = new THREE.Scene();
 globalThis.o_scene = o_scene
 o_scene.background = new THREE.Color(0x111111); // Dark background for contrast
 
+const o_world_group = new THREE.Group(); // This will contain all objects
+o_scene.add(o_world_group);
+
 const o_camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000); // Aspect ratio 1 for square canvas
+globalThis.o_camera = o_camera
+
 const o_renderer = new THREE.WebGLRenderer({ antialias: true });
 o_renderer.setSize(500, 500);
 document.querySelector('#canvas')?.appendChild(o_renderer.domElement);
@@ -541,29 +666,43 @@ document.querySelector('#canvas')?.appendChild(o_renderer.domElement);
 const ambientLight = new THREE.AmbientLight(0x404040);
 o_scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
 directionalLight.position.set(1, 1, 1);
 o_scene.add(directionalLight);
+
+
+// 2. Create a light and attach it to the camera
+const cameraLight = new THREE.DirectionalLight(0xffffff, 1);
+o_camera.add(cameraLight); // This makes the light follow the camera
+
+// 3. Position the light relative to the camera
+cameraLight.position.set(0, 0, 10); // Slightly in front of camera
+
 
 // Add orbit controls
 const o_controls = new OrbitControls(o_camera, o_renderer.domElement);
 o_controls.enableDamping = true;
-o_controls.dampingFactor = 0.25;
+o_controls.dampingFactor = 0.05;
 
+// Disable default camera rotation
+// o_controls.enableRotate = true;
+// o_controls.rotateSpeed = 1.0;
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     // Clean up invalid objects
-    o_scene.traverse(o_child => {
+    o_world_group.traverse(o_child => {
         if (o_child.isMesh && !o_child.geometry) {
-            o_scene.remove(o_child);
+            o_world_group.remove(o_child);
         }
     });
 
     if (o_scene && o_camera && o_renderer) {
         o_renderer.render(o_scene, o_camera);
     }
-    o_controls.update();
+    // o_controls.update();
     o_renderer.render(o_scene, o_camera);
 }
 animate();
+
+
