@@ -581,6 +581,106 @@ let a_o_function = [
 
             return a_o_mesh
         }
+    ),
+    f_o_function(
+        'circles_extruded', 
+        function(){
+
+            let f_o_extruded_mesh_curvepoints = function(a_o_p, n_extrusion, n_points_per_circle){
+                // Convert to 2D points first
+                const a_points_2d = a_o_p.map(o => new THREE.Vector2(o.n_x, o.n_y));
+                
+                // Create shape directly from 2D points
+                const shape = new THREE.Shape(a_points_2d);
+                
+                const extrudeSettings = {
+                    depth: n_extrusion,
+                    bevelEnabled: false,
+                    steps: 1,
+                    curveSegments: n_points_per_circle
+                };
+                
+                const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                return f_o_shaded_mesh(geometry);
+            }
+
+            let f_a_o_p_circles = function(
+                n_corners, 
+                n_radius, 
+                n_radius_plus_minus_random, 
+                n_freq
+            ){
+
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx)=>{
+                    let n_it = parseInt(n_idx);
+                    let n_it_nor = n_it/ n_corners;
+                    let n_tau = Math.PI*2
+                    let n_radius_random = n_radius + Math.sin(n_it_nor*n_tau*n_freq)*n_radius_plus_minus_random; 
+                    let o_trn2 = f_o_vec(
+                        Math.sin(n_tau*n_it_nor)*n_radius_random,
+                        Math.cos(n_tau*n_it_nor)*n_radius_random,
+                        0,
+                    )
+                    return f_o_vec(
+                        o_trn2.n_x,
+                        o_trn2.n_y,
+                        o_trn2.n_z,
+                    );
+                });
+                return a_o
+            }
+
+            let n_corners = 1000;
+            let n_radius = 50;
+            let n_radius_plus_minus = 5;
+            let n_extrusion = 20;
+            let n_freq = 10;
+
+            return [
+                f_o_extruded_mesh_curvepoints(
+                    f_a_o_p_circles(n_corners, n_radius, n_radius_plus_minus,n_freq),
+                    n_extrusion,
+                    n_corners
+                )
+            ]
+            // let n_points = 100;
+            // let n_radius = 50;
+            // let n_height = 100;
+
+            // let a_o_p1 = f_a_o_p_circles(
+            //     n_points,
+            //     n_radius,
+            //     3
+            // );
+            // let n_tau = Math.PI*2;
+            // let n_layer_height_mm = 0.2;///2. for more precision, subsampling
+            // let n_corners = 5.;
+            // let n_its = n_height / n_layer_height_mm;
+
+            // let a_o_mesh = new Array(n_its).fill(0).map((v, n_idx)=>{
+            //     let n_it = parseInt(n_idx);
+            //     let n_it_nor = n_it / n_its;
+
+            //     let a_o_p = a_o_p1.map((o, n_idx)=>{
+            //         let n = parseInt(n_idx);
+            //         let n_nor = n/n_points;
+            //         let n_radius = Math.sqrt(Math.pow(o.n_x,2) + Math.pow(o.n_y,2) + Math.pow(o.n_y,2));
+            //         let n_radius_offset = Math.sin(n_it_nor*n_tau*3.)*3;
+            //         let n_radians = Math.atan2(o.n_y, o.n_x);
+            //         let n_rot = n_it_nor * n_tau/2
+            //         return f_o_vec(
+            //             Math.sin(n_radians+n_rot)*(n_radius+n_radius_offset), 
+            //             Math.cos(n_radians+n_rot)*(n_radius+n_radius_offset), 
+            //             0
+            //         );
+            //     });
+            //     let o_mesh = f_o_extruded_mesh_curvepoints(a_o_p, n_layer_height_mm, n_points);
+            //     o_mesh.position.set(0,0,n_it*n_layer_height_mm);
+            //     return o_mesh
+            // })
+
+            // return a_o_mesh
+        }
     )
 ]
 let o_div = document;
