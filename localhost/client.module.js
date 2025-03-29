@@ -99,15 +99,6 @@ let f_a_o_p_reg_poly = function(
     });
     return a_o
 }
-const o_material = new THREE.MeshPhongMaterial({
-    // color: 0x0000ff,
-    // wireframe: true,
-    // transparent: false,
-    // opacity: 0.8
-    color: 0x00aaff,
-    // wireframe: true,
-    // flatShading: true
-})
 
 let f_o_reg_poly = function(
     o_trn, 
@@ -137,7 +128,7 @@ let f_o_reg_poly = function(
     const geometry = new THREE.ExtrudeGeometry(o_shape, extrudeSettings);
 
     // Create a mesh with the geometry and a material
-    const mesh = new THREE.Mesh(geometry, o_material);
+    const mesh = new f_o_shaded_mesh(geometry);
     
     // Apply translation if o_trn is provided
     if (o_trn) {
@@ -168,15 +159,11 @@ let f_o_shaded_mesh = function(
     o_geometry,
     n_color = 0x6bb9f2,
     n_edge_color = 0x000000,
-    n_edge_width = 1
+    n_edge_width = 0.0002
 ){
     // 1. Create the shaded material (Phong for nice lighting)
     const o_shaded_material = new THREE.MeshPhongMaterial({
-        color: n_color,
-        specular: 0x111111,
-        shininess: 30,
-        flatShading: false,
-        side: THREE.DoubleSide
+        color: 0xCBC3E3,    // red (can also use a CSS color string here)
     });
     
     // 2. Create the wireframe material
@@ -184,16 +171,17 @@ let f_o_shaded_mesh = function(
         color: n_edge_color,
         wireframe: true,
         transparent: true,
-        opacity: 0.8
+        opacity: 0.2
     });
     
     // 3. Create the edge lines (cleaner than wireframe material)
     const o_edges = new THREE.EdgesGeometry(o_geometry);
-    const o_line_material = new THREE.LineBasicMaterial({ 
-        color: n_edge_color, 
-        linewidth: n_edge_width 
-    });
-    const o_edge_lines = new THREE.LineSegments(o_edges, o_line_material);
+    // const o_line_material = new THREE.LineBasicMaterial({ 
+    //     color: n_edge_color, 
+    //     linewidth: n_edge_width, 
+    //     opacity: 0.2
+    // });
+    // const o_edge_lines = new THREE.LineSegments(o_edges, o_line_material);
     
     // 4. Create the shaded mesh
     const o_shaded_mesh = new THREE.Mesh(o_geometry, o_shaded_material);
@@ -201,7 +189,7 @@ let f_o_shaded_mesh = function(
     // 5. Combine in a group
     const o_group = new THREE.Group();
     o_group.add(o_shaded_mesh);
-    o_group.add(o_edge_lines);
+    // o_group.add(o_edge_lines);
     
     return o_group;
 };
@@ -801,18 +789,19 @@ let a_o_function = [
                     }
                 )
             ]
+            return a_o
             // Merge geometries
-            const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(
-                a_o.map(o=>{
-                    o.updateMatrixWorld();
-                    return o.geometry.clone().applyMatrix4(o.matrixWorld);
-                })
-                , 
-                false
-            );
+            // const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(
+            //     a_o.map(o=>{
+            //         o.updateMatrixWorld();
+            //         return o.geometry.clone().applyMatrix4(o.matrixWorld);
+            //     })
+            //     , 
+            //     false
+            // );
             
-            const mergedMesh = f_o_shaded_mesh(mergedGeometry);
-            return [mergedMesh]
+            // const mergedMesh = f_o_shaded_mesh(mergedGeometry);
+            // return [mergedMesh]
         
         }
     ), 
@@ -855,20 +844,7 @@ let a_o_function = [
                     }
                 )
             ]
-            // return a_o
-            // Merge geometries
-            const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(
-                a_o.map(o=>{
-                    o.updateMatrixWorld();
-
-                    return o.geometry.clone().applyMatrix4(o.matrixWorld);
-                })
-                , 
-                false
-            );
-            
-            const mergedMesh = f_o_shaded_mesh(mergedGeometry);
-            return [mergedMesh]
+            return a_o
         
         }
     )
@@ -1278,14 +1254,12 @@ let f_resize_renderer = function(){
 f_resize_renderer();
 
 
+
+const light = new THREE.PointLight( 0xffffff, 1); // soft white light
+light.position.set(10,10,10)
+o_scene.add( light );
 // 2. Improve camera light
-const cameraLight = new THREE.DirectionalLight( 0xffffff, 1 );
-
-// Increased intensity
-cameraLight.target.position.set(0, 0, 0); // Point toward scene center
-o_camera.add(cameraLight);
-o_camera.add(cameraLight.target); // Critical!
-
+// const cameraLight = new THREE.DirectionalLight( 0xffffff, 1 );
 // // 3. Add a second directional light from opposite side
 // const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
 // fillLight.position.set(-5, 5, 5);
@@ -1304,7 +1278,7 @@ function animate() {
     requestAnimationFrame(animate);
 
 
-    cameraLight.position.set(
+    light.position.set(
         o_camera.position.x,
         o_camera.position.y,
         o_camera.position.z,
