@@ -15,6 +15,7 @@ import * as THREE from '/three.js-r126/build/three.module.js';
 import { OrbitControls } from '/three.js-r126/examples/jsm/controls/OrbitControls.js';
 import { STLExporter } from '/three.js-r126/examples/jsm/exporters/STLExporter.js';
 import { ConvexGeometry } from '/three.js-r126/examples/jsm/geometries/ConvexGeometry.js';
+import { BufferGeometryUtils } from '/three.js-r126/examples/jsm/utils/BufferGeometryUtils.js';
 // import { STLExporter } from '/three/STLExporter.js';
 // if you need more addons/examples download from here...
 //  
@@ -681,6 +682,195 @@ let a_o_function = [
 
             // return a_o_mesh
         }
+    ),
+    f_o_function(
+        'fancy_vase', 
+        function(){
+
+            let f_o_extruded_mesh_curvepoints = function(a_o_p, n_extrusion, n_points_per_circle){
+                // Convert to 2D points first
+                const a_points_2d = a_o_p.map(o => new THREE.Vector2(o.n_x, o.n_y));
+                
+                // Create shape directly from 2D points
+                const shape = new THREE.Shape(a_points_2d);
+                
+                const extrudeSettings = {
+                    depth: n_extrusion,
+                    bevelEnabled: false,
+                    steps: 1,
+                    curveSegments: n_points_per_circle
+                };
+                
+                const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                return f_o_shaded_mesh(geometry);
+            }
+
+            let f_a_o_p_circles = function(
+                n_corners, 
+                n_radius, 
+                n_sin_amp, 
+                n_freq,
+                n_freq_offset
+             ){
+
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx)=>{
+                    let n_it = parseInt(n_idx);
+                    let n_it_nor = n_it/ n_corners;
+                    let n_tau = Math.PI*2
+                    let n_radius_random = n_radius + Math.sin(n_it_nor*n_tau*n_freq)*n_sin_amp; 
+                    let o_trn2 = f_o_vec(
+                        Math.sin(n_tau*n_it_nor+n_freq_offset)*n_radius_random,
+                        Math.cos(n_tau*n_it_nor+n_freq_offset)*n_radius_random,
+                        0,
+                    )
+                    return f_o_vec(
+                        o_trn2.n_x,
+                        o_trn2.n_y,
+                        o_trn2.n_z,
+                    );
+                });
+                return a_o
+            }
+
+            let n_corners = 500;
+            let n_radius = 50;
+            let n_radius_plus_minus = 5;
+            let n_extrusion = 20;
+            let n_freq = 20;
+
+            let n_height = 100.;
+            let n_layer_height_mm = .2;
+            let n_its = n_height / n_layer_height_mm;
+            let a_o_mesh = new Array(n_its).fill(0).map((v, n_idx)=>{
+                let n_it = parseInt(n_idx);
+                let n_it_nor = n_it / n_its;
+                let n_sin_amp = (1.-n_it_nor)*10; 
+                let n_grow = (1.-n_it_nor);
+                n_grow = n_grow*n_grow
+                let a_o_p_circles = f_a_o_p_circles(
+                    n_corners, 
+                    n_radius*n_grow+20, 
+                    n_sin_amp, 
+                    n_freq, 
+                    n_it_nor
+                );
+                let o_mesh = f_o_extruded_mesh_curvepoints(a_o_p_circles, n_layer_height_mm, n_corners);
+                o_mesh.position.set(0,0,n_it*n_layer_height_mm);
+                return o_mesh
+            })
+
+            return a_o_mesh
+
+        }
+    ),
+    f_o_function(
+        'zig_zag',
+        function() {
+            // let ov = f_ov({
+            //     n_its: {n_min: 3, n_max: 10, n: 10},
+            //     n_amp: 20,
+            // });
+            let n_tau = Math.PI * 2;
+            let n_layer_height_mm = 0.2 / 2.;///2. for more precision, subsampling
+            let n_radius_bottom = 28.;
+            let n_radius_top = 30.;
+            let n_height = 60.;
+            let n_corners = 5.;
+            let n_its = n_height / n_layer_height_mm;
+            let a_o = [
+                ...new Array(n_its).fill(0).map(
+                    (n, n_idx) => {
+                        let n_it = parseInt(n_idx)
+                        let n_it_nor = n_it / n_its;
+                        let n_rotation_radians = n_it_nor * n_tau / 5;
+                        let n_radius_plus_minus = 3;
+        
+                        let n_reps = n_it_nor*10;
+                        let n_reps_fract = n_reps % 1;
+                        let a = n_reps %1;
+                        let b = (1.-a);
+                        let c = Math.min(a,b);
+                        let n_radius = n_radius_bottom + (c)*10;
+                        return f_o_reg_poly(
+                            f_o_vec(0, 0, n_it * n_layer_height_mm),
+                            n_rotation_radians,
+                            n_radius,
+                            n_corners,
+                            n_layer_height_mm
+                        )
+                    }
+                )
+            ]
+            // Merge geometries
+            const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(
+                a_o.map(o=>{
+                    o.updateMatrixWorld();
+                    return o.geometry.clone().applyMatrix4(o.matrixWorld);
+                })
+                , 
+                false
+            );
+            
+            const mergedMesh = f_o_shaded_mesh(mergedGeometry);
+            return [mergedMesh]
+        
+        }
+    ), 
+    f_o_function(
+        'vase_hexagonal_twisted_accordion',
+        function() {
+            // let ov = f_ov({
+            //     n_its: {n_min: 3, n_max: 10, n: 10},
+            //     n_amp: 20,
+            // });
+            let n_tau = Math.PI * 2;
+            let n_layer_height_mm = 0.2;///2. for more precision, subsampling
+            let n_radius_bottom = 28.;
+            let n_radius_top = 45.;
+            let n_height = 120.;
+            let n_corners = 6.;
+            let n_its = n_height / n_layer_height_mm;
+            let a_o = [
+                ...new Array(n_its).fill(0).map(
+                    (n, n_idx) => {
+                        let n_it = parseInt(n_idx)
+                        let n_it_nor = n_it / n_its;
+                        let n_rotation_radians = n_it_nor * n_tau / 5;
+                        let n_radius_plus_minus = 3;
+        
+                        let n_reps = n_it_nor*10;
+                        let n_reps_fract = n_reps % 1;
+                        let a = n_reps %1;
+                        let b = (1.-a);
+                        let c = Math.min(a,b);
+                        let n_radius = (n_radius_bottom
+                        + (n_radius_top-n_radius_bottom)*n_it_nor*n_it_nor) + (c)*10;
+                        return f_o_reg_poly(
+                            f_o_vec(0, 0, n_it * n_layer_height_mm),
+                            n_rotation_radians,
+                            n_radius,
+                            n_corners,
+                            n_layer_height_mm
+                        )
+                    }
+                )
+            ]
+            // return a_o
+            // Merge geometries
+            const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(
+                a_o.map(o=>{
+                    o.updateMatrixWorld();
+
+                    return o.geometry.clone().applyMatrix4(o.matrixWorld);
+                })
+                , 
+                false
+            );
+            
+            const mergedMesh = f_o_shaded_mesh(mergedGeometry);
+            return [mergedMesh]
+        
+        }
     )
 ]
 let o_div = document;
@@ -728,87 +918,99 @@ let o = await f_o_html_from_o_js(
                         return [
                             {
                                 id: 'canvas',
-                            },
-                            {
-                                s_tag: "button", 
-                                innerText: "download", 
-                                onclick: ()=>{
-                                    f_export_stl();
-                                }
-                            }, 
-                            {
-                                s_tag: "select", 
+                                style: 'height: 100vh;position:relative', 
                                 f_a_o: ()=>{
                                     return [
-                                        ...o_state.a_o_function.map(o=>{
-                                            return {
-                                                s_tag: "option", 
-                                                value: o.s_name, 
-                                                innerText: o.s_name
-                                            }
-                                        }), 
                                         {
-                                            s_tag: 'option', 
-                                            value: 'new', 
-                                            innerText: "new"
+                                            class: "inputs", 
+                                            style: "position: absolute;top:0",
+                                            f_a_o: ()=>[
+                                                {
+                                                    s_tag: "button", 
+                                                    innerText: "download", 
+                                                    onclick: ()=>{
+                                                        f_export_stl();
+                                                    }
+                                                }, 
+                                                {
+                                                    s_tag: "select", 
+                                                    f_a_o: ()=>{
+                                                        return [
+                                                            ...o_state.a_o_function.map(o=>{
+                                                                return {
+                                                                    s_tag: "option", 
+                                                                    value: o.s_name, 
+                                                                    innerText: o.s_name
+                                                                }
+                                                            }), 
+                                                            {
+                                                                s_tag: 'option', 
+                                                                value: 'new', 
+                                                                innerText: "new"
+                                                            }
+                                                        ]
+                                                    }, 
+                                                    onchange: (o_e)=>{
+                                                        let s_name = o_e.target.value;
+                                                        if(s_name == 'new'){
+                                                            o_state.o_function = {s_name: 'new', s_function:o_monaco_editor.getValue()}
+                                                            o_state.a_o_function.push(o_state.o_function)
+                                                        }else{
+                                                            o_state.o_function = o_state.a_o_function.find(o=>{return o.s_name == s_name});
+                                                        }
+                                                        o_state.s_name = o_state.o_function.s_name
+                                                        f_update_from_o_function(o_state.o_function)
+                    
+                                                    }
+                                                }, 
+                                                {
+                                                    s_tag: "input", 
+                                                    a_s_prop_sync: `s_name`
+                                                }, 
+                                                {
+                                                    f_a_o: ()=>{
+                                                        let a_s_prop = Object.keys(o_state.ov);
+                                                        return a_s_prop.map(s_prop=>{
+                                                            let v = o_state.ov[s_prop];
+                                                            if(v.n_min)
+                                                            return {
+                                                                f_a_o: ()=>{
+                                                                    return [
+                                                                        {
+                                                                            f_s_innerText: ()=>s_prop
+                                                                        },
+                                                                        (v.n_min) ? {
+                                                                            s_tag: 'input', 
+                                                                            type: 'range',
+                                                                            a_s_prop_sync: `ov.${s_prop}.n`,
+                                                                            min: v?.n_min,
+                                                                            max: v?.n_max, 
+                                                                            oninput: ()=>{
+                                                                                f_update_rendering();
+                                                                            }
+                                                                        }: {
+                                                                            s_tag: 'input', 
+                                                                            type:  'number',
+                                                                            a_s_prop_sync: `ov.${s_prop}}`,
+                                                                            oninput: ()=>{
+                                                                                f_update_rendering();
+                                                                            }
+                                                                        }
+                                                                        
+                                                                    ]
+                                                                }
+                                                                
+                                                            }
+                                                        })
+                                                    },
+                                                    a_s_prop_sync: 'n_ts_ov_changed'
+                                                }
+                                            ]
                                         }
                                     ]
-                                }, 
-                                onchange: (o_e)=>{
-                                    let s_name = o_e.target.value;
-                                    if(s_name == 'new'){
-                                        o_state.o_function = {s_name: 'new', s_function:o_monaco_editor.getValue()}
-                                        o_state.a_o_function.push(o_state.o_function)
-                                    }else{
-                                        o_state.o_function = o_state.a_o_function.find(o=>{return o.s_name == s_name});
-                                    }
-                                    o_state.s_name = o_state.o_function.s_name
-                                    f_update_from_o_function(o_state.o_function)
-
                                 }
-                            }, 
-                            {
-                                s_tag: "input", 
-                                a_s_prop_sync: `s_name`
-                            }, 
-                            {
-                                f_a_o: ()=>{
-                                    let a_s_prop = Object.keys(o_state.ov);
-                                    return a_s_prop.map(s_prop=>{
-                                        let v = o_state.ov[s_prop];
-                                        if(v.n_min)
-                                        return {
-                                            f_a_o: ()=>{
-                                                return [
-                                                    {
-                                                        f_s_innerText: ()=>s_prop
-                                                    },
-                                                    (v.n_min) ? {
-                                                        s_tag: 'input', 
-                                                        type: 'range',
-                                                        a_s_prop_sync: `ov.${s_prop}.n`,
-                                                        min: v?.n_min,
-                                                        max: v?.n_max, 
-                                                        oninput: ()=>{
-                                                            f_update_rendering();
-                                                        }
-                                                    }: {
-                                                        s_tag: 'input', 
-                                                        type:  'number',
-                                                        a_s_prop_sync: `ov.${s_prop}}`,
-                                                        oninput: ()=>{
-                                                            f_update_rendering();
-                                                        }
-                                                    }
-                                                    
-                                                ]
-                                            }
-                                            
-                                        }
-                                    })
-                                },
-                                a_s_prop_sync: 'n_ts_ov_changed'
-                            }
+                            },
+                            
                         ]
                     }
                 }
@@ -1062,25 +1264,32 @@ const o_camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000); // Aspect ratio 
 globalThis.o_camera = o_camera
 
 const o_renderer = new THREE.WebGLRenderer({ antialias: true });
-o_renderer.setSize(500, 500);
+// o_renderer.setSize(500, 500);
 document.querySelector('#canvas')?.appendChild(o_renderer.domElement);
+let f_resize_renderer = function(){
+    let o_bounds = o_renderer.domElement.parentElement.getBoundingClientRect();
+    console.log(o_renderer.domElement.parentElement);
+    o_renderer.setSize(o_bounds.width, o_bounds.height, false);
+    
+    // Update camera aspect ratio
+    o_camera.aspect = o_bounds.width / o_bounds.height;
+    o_camera.updateProjectionMatrix();
+}
+f_resize_renderer();
 
-// Add lights
-const ambientLight = new THREE.AmbientLight(0x404040);
-o_scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-directionalLight.position.set(1, 1, 1);
-o_scene.add(directionalLight);
+// 2. Improve camera light
+const cameraLight = new THREE.DirectionalLight( 0xffffff, 1 );
 
+// Increased intensity
+cameraLight.target.position.set(0, 0, 0); // Point toward scene center
+o_camera.add(cameraLight);
+o_camera.add(cameraLight.target); // Critical!
 
-// 2. Create a light and attach it to the camera
-const cameraLight = new THREE.DirectionalLight(0xffffff, 1);
-o_camera.add(cameraLight); // This makes the light follow the camera
-
-// 3. Position the light relative to the camera
-cameraLight.position.set(0, 0, 10); // Slightly in front of camera
-
+// // 3. Add a second directional light from opposite side
+// const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
+// fillLight.position.set(-5, 5, 5);
+// o_scene.add(fillLight);
 
 // Add orbit controls
 const o_controls = new OrbitControls(o_camera, o_renderer.domElement);
@@ -1093,6 +1302,14 @@ o_controls.dampingFactor = 0.05;
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
+
+
+    cameraLight.position.set(
+        o_camera.position.x,
+        o_camera.position.y,
+        o_camera.position.z,
+    ); // Position in front of camera
+
     // Clean up invalid objects
     o_world_group.traverse(o_child => {
         if (o_child.isMesh && !o_child.geometry) {
@@ -1110,7 +1327,10 @@ animate();
 
 
 
-
+window.onresize = function(){
+    f_resize_renderer();
+    o_monaco_editor.layout();
+}
 // for(let n = 0; n< 100; n+=1){
 
 //     let v = perlin.get(n*0.1,n)
