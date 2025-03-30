@@ -847,6 +847,340 @@ let a_o_function = [
             return a_o
         
         }
+    ),
+    f_o_function(
+        'ugly_coded',
+        function() {
+            // let ov = f_ov({
+            //     n_its: {n_min: 3, n_max: 10, n: 10},
+            //     n_amp: 20,
+            // });
+            let f_o_reg_poly2 = function (
+                o_trn,
+                n_rot_radians,
+                n_radius,
+                n_corners,
+                n_extrusion
+            ) {
+                let a_o = f_a_o_p_reg_poly2(
+                    o_trn,
+                    n_corners,
+                    n_radius,
+                    0.,//n_rot_radians
+                )
+                // Convert your points to Three.js Vector2 array
+                const a_o_point = a_o.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));
+                // Create a shape from the points
+                const o_shape = new THREE.Shape(a_o_point);
+        
+                // Extrusion settings (0.2mm in z-direction)
+                const extrudeSettings = {
+                    depth: n_extrusion, // 0.2mm extrusion
+                    bevelEnabled: false // No bevel for simple extrusion
+                };
+        
+                // Create the extruded geometry
+                const geometry = new THREE.ExtrudeGeometry(o_shape, extrudeSettings);
+        
+                // Create a mesh with the geometry and a material
+                const mesh = new f_o_shaded_mesh(geometry);
+        
+                // Apply translation if o_trn is provided
+                if (o_trn) {
+                    mesh.position.set(
+                        o_trn.n_x || 0,
+                        o_trn.n_y || 0,
+                        o_trn.n_z || 0
+                    );
+                }
+        
+                // Apply rotation if n_rot_radians is provided
+                if (n_rot_radians !== undefined) {
+                    mesh.rotation.z = n_rot_radians; // Rotate around Z-axis
+                }
+        
+                return mesh
+            }
+            let f_a_o_p_reg_poly2 = function (
+                o_trn,
+                n_corners,
+                n_amp,
+                n_radians_rotation
+            ) {
+                let n_a = n_amp
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx) => {
+                    let n_it = parseInt(n_idx);
+                    let n_it_nor = n_it / n_corners;
+                    if (n_it % 2 == 0) {
+                        n_a = n_amp+20
+                    }else{
+                        n_a = n_amp
+                    }
+                    let o_trn2 = f_o_vec(
+                        Math.sin(n_tau * n_it_nor + n_radians_rotation) * n_a,
+                        Math.cos(n_tau * n_it_nor + n_radians_rotation) * n_a,
+                        0,
+                    )
+                    return f_o_vec(
+                        o_trn.n_x + o_trn2.n_x,
+                        o_trn.n_y + o_trn2.n_y,
+                        o_trn.n_z + o_trn2.n_z,
+                    );
+                });
+                return a_o
+            }
+            let n_tau = Math.PI * 2;
+            let n_layer_height_mm = 0.2;///2. for more precision, subsampling
+            let n_radius_bottom = 40.;
+            let n_radius_top = 70.;
+            let n_height = 200;
+            let n_corners = 30.;
+            let n_its = n_height / n_layer_height_mm;
+            let a_o = [
+                ...new Array(n_its).fill(0).map(
+                    (n, n_idx) => {
+                        let n_it = parseInt(n_idx)
+                        let n_it_nor = n_it / n_its;
+                        let n_rotation_radians = n_it_nor * n_tau / 5;
+                        let n_radius_plus_minus = 3;
+        
+                        let n_reps = n_it_nor * 10;
+                        let n_reps_fract = n_reps % 1;
+                        let a = n_reps % 1;
+                        let b = (1. - a);
+                        let c = Math.min(a, b);
+                        let n_radius = (n_radius_bottom
+                            + (n_radius_top - n_radius_bottom) * n_it_nor * n_it_nor) + Math.sin(n_it_nor * n_tau * 10) * 2
+                        return f_o_reg_poly2(
+                            f_o_vec(0, 0, n_it * n_layer_height_mm),
+                            n_rotation_radians,
+                            n_radius,
+                            n_corners,
+                            n_layer_height_mm
+                        )
+                    }
+                )
+            ]
+            return a_o
+        
+        }
+    ), 
+    f_o_function(
+        'vase_preset',
+        function(){
+            let f_o_extruded_mesh = function(a_o_p, n_extrusion){
+                const a_o_point = a_o_p.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));
+                const o_shape = new THREE.Shape(a_o_point);
+                const extrudeSettings = {
+                    depth: n_extrusion, // 0.2mm extrusion
+                    bevelEnabled: false // No bevel for simple extrusion
+                };
+                const geometry = new THREE.ExtrudeGeometry(o_shape, extrudeSettings);
+                const mesh = f_o_shaded_mesh(geometry);
+                return mesh
+            }
+            let f_a_o_p = function(
+                n_corners, 
+                n_amp,
+                n_rad_offset
+            ){
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx)=>{
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor = n_it/n_corners;
+                    // modify the polygon here 
+                    let o_trn = f_o_vec(
+                        Math.sin(n_tau*n_it_nor+n_rad_offset)*n_amp,
+                        Math.cos(n_tau*n_it_nor+n_rad_offset)*n_amp,
+                        0,
+                    )
+                    return o_trn
+                });
+                return a_o
+            }
+            let n_tau = Math.PI*2;
+            let n_layer_height_mm = 0.2;///2; for more precision, subsampling, but slower!
+            let n_height = 60.;
+            let n_corners = 120.;
+            let n_radius = 30.;
+            let n_its = n_height / n_layer_height_mm;
+            let a_o = [
+                ...new Array(n_its).fill(0).map(
+                    (n, n_idx)=>{
+                        let n_it = parseFloat(n_idx)
+                        let n_it_nor = n_it/n_its;
+                        let a_o_p = f_a_o_p(
+                            n_corners, 
+                            n_radius,
+                            0// twist
+                        );
+                        let o_mesh = f_o_extruded_mesh(
+                            a_o_p, 
+                            n_layer_height_mm
+                        )
+                        let n_rotation = 0;
+                        o_mesh.rotation.set(0,0,n_rotation)
+                        let n_z = n_it*n_layer_height_mm
+                        o_mesh.position.set(0,0,n_z);
+                        return o_mesh
+                    }
+                )
+            ]
+            return a_o
+        }
+    ),      
+    f_o_function(
+        'vase_3parts',
+        function(){
+            let f_o_extruded_mesh = function(a_o_p, n_extrusion){
+                const a_o_point = a_o_p.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));
+                const o_shape = new THREE.Shape(a_o_point);
+                const extrudeSettings = {
+                    depth: n_extrusion, // 0.2mm extrusion
+                    bevelEnabled: false // No bevel for simple extrusion
+                };
+                const geometry = new THREE.ExtrudeGeometry(o_shape, extrudeSettings);
+                const mesh = f_o_shaded_mesh(geometry);
+                return mesh
+            }
+            let f_a_o_p = function(
+                n_corners, 
+                n_amp,
+                n_rad_offset, 
+                n_it_nor
+            ){
+                let na = n_amp;
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx)=>{
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor = n_it/n_corners;
+                    // modify the polygon here 
+                    let n_waves = 50.;
+                    let n2 = (Math.cos(n_it_nor*n_tau*n_waves)*.5-.5)*5.;
+                    n2 *= Math.min(0,Math.sin(n_it_nor*n_tau*3));
+                    na = n_amp;
+                    na -= n2;
+                    let o_trn = f_o_vec(
+                        Math.sin(n_tau*n_it_nor+n_rad_offset)*na,
+                        Math.cos(n_tau*n_it_nor+n_rad_offset)*na,
+                        0,
+                    )
+                    return o_trn
+                });
+                return a_o
+            }
+            let n_tau = Math.PI*2;
+            let n_layer_height_mm = 0.2;///2; for more precision, subsampling, but slower!
+            let n_height = 100.;
+            let n_corners = 200.;
+            let n_radius = 20.;
+            let n_its = n_height / n_layer_height_mm;
+            let a_o = [
+                ...new Array(n_its).fill(0).map(
+                    (n, n_idx)=>{
+                        let n_it = parseFloat(n_idx)
+                        let n_it_nor = n_it/n_its;
+                        let n_r = (Math.sin(n_it_nor*n_tau*0.9)*.5+.5)*(n_radius*1.2)+n_radius
+                        let a_o_p = f_a_o_p(
+                            n_corners, 
+                            n_r,
+                            n_it_nor*n_tau/3.,// twist, 
+                            n_it_nor
+                        );
+                        let o_mesh = f_o_extruded_mesh(
+                            a_o_p, 
+                            n_layer_height_mm
+                        )
+                        let n_rotation = 0;
+                        o_mesh.rotation.set(0,0,n_rotation)
+                        let n_z = n_it*n_layer_height_mm
+                        o_mesh.position.set(0,0,n_z);
+                        return o_mesh
+                    }
+                )
+            ]
+            return a_o
+        }
+    ), 
+    f_o_function(
+        'polygon_subsampling',
+        function(){
+            let f_o_extruded_mesh = function(a_o_p, n_extrusion){
+                const a_o_point = a_o_p.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));
+                const o_shape = new THREE.Shape(a_o_point);
+                const extrudeSettings = {
+                    depth: n_extrusion, // 0.2mm extrusion
+                    bevelEnabled: false // No bevel for simple extrusion
+                };
+                const geometry = new THREE.ExtrudeGeometry(o_shape, extrudeSettings);
+                const mesh = f_o_shaded_mesh(geometry);
+                return mesh
+            }
+            let f_a_o_p = function(
+                n_corners, 
+                n_amp,
+                n_rad_offset, 
+                n_it_nor
+            ){
+                let n_its_subsample = 10;
+                let na = n_amp;
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx)=>{
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor = n_it/n_corners;
+
+                    // modify the polygon here 
+                    let n_waves = 50.;
+                    let n2 = (Math.cos(n_it_nor*n_tau*n_waves)*.5-.5)*5.;
+                    n2 *= Math.min(0,Math.sin(n_it_nor*n_tau*3));
+                    na = n_amp;
+                    na -= n2;
+                    const intermediatePoints = [];
+                    for (let n_it_subsample = 0; n_it_subsample < n_its_subsample; n_it_subsample++) {
+                        const t = n_it_subsample / n_its_subsample; // Interpolation factor [0, 1)
+                        const x = o_trn1.x + t * (o_trn2.x - o_trn1.x);
+                        const y = o_trn1.y + t * (o_trn2.y - o_trn1.y);
+                        const z = o_trn1.z + t * (o_trn2.z - o_trn1.z);
+                    
+                        const o_trn = f_o_vec(x, y, z);
+                        intermediatePoints.push(o_trn);
+                    }
+                });
+                let a_o2 = [];
+                for(let n = 0; n< a_o.length; n+=1){
+                    let n
+                }
+                return a_o
+            }
+            let n_tau = Math.PI*2;
+            let n_layer_height_mm = 10.//0.2;///2; for more precision, subsampling, but slower!
+            let n_height = 100.;
+            let n_corners = 5.;
+            let n_radius = 20.;
+            let n_its = n_height / n_layer_height_mm;
+            let a_o = [
+                ...new Array(n_its).fill(0).map(
+                    (n, n_idx)=>{
+                        let n_it = parseFloat(n_idx)
+                        let n_it_nor = n_it/n_its;
+                        let n_r = (Math.sin(n_it_nor*n_tau*0.9)*.5+.5)*(n_radius*1.2)+n_radius
+                        let a_o_p = f_a_o_p(
+                            n_corners, 
+                            n_r,
+                            n_it_nor*n_tau/3.,// twist, 
+                            n_it_nor
+                        );
+                        let o_mesh = f_o_extruded_mesh(
+                            a_o_p, 
+                            n_layer_height_mm
+                        )
+                        let n_rotation = 0;
+                        o_mesh.rotation.set(0,0,n_rotation)
+                        let n_z = n_it*n_layer_height_mm
+                        o_mesh.position.set(0,0,n_z);
+                        return o_mesh
+                    }
+                )
+            ]
+            return a_o
+        }
     )
 ]
 let o_div = document;
