@@ -16,6 +16,10 @@ import { OrbitControls } from '/three.js-r126/examples/jsm/controls/OrbitControl
 import { STLExporter } from '/three.js-r126/examples/jsm/exporters/STLExporter.js';
 import { ConvexGeometry } from '/three.js-r126/examples/jsm/geometries/ConvexGeometry.js';
 import { BufferGeometryUtils } from '/three.js-r126/examples/jsm/utils/BufferGeometryUtils.js';
+import { Line2 } from '/three.js-r126/examples/jsm/lines/Line2.js';
+import { LineMaterial } from '/three.js-r126/examples/jsm/lines/LineMaterial.js';
+import { LineGeometry } from '/three.js-r126/examples/jsm/lines/LineGeometry.js';
+
 // import { STLExporter } from '/three/STLExporter.js';
 // if you need more addons/examples download from here...
 //  
@@ -73,7 +77,7 @@ let f_ov = function(ov){
     // o_state.ov = ov;
     return o_state.ov;
 }
-let f_o_vec = function(n_x, n_y, n_z){return {n_x, n_y, n_z}}
+let f_o_vec = function(n_x, n_y, n_z =0){return {n_x, n_y, n_z}}
 let f_o_line = function(o_trn, o_trn2){return {o_trn, o_trn2}}
 let f_o_circle = function(o_trn, n_radius){return {o_trn, n_radius}}
 let n_tau = Math.PI*2;
@@ -1118,39 +1122,50 @@ let a_o_function = [
                 n_corners, 
                 n_amp,
                 n_rad_offset, 
-                n_it_nor
+                n_it_nor2
             ){
-                let n_its_subsample = 10;
+                let n_its_subsample = 100;
                 let na = n_amp;
                 let a_o = new Array(n_corners).fill(0).map((v, n_idx)=>{
                     let n_it = parseFloat(n_idx);
                     let n_it_nor = n_it/n_corners;
-
-                    // modify the polygon here 
-                    let n_waves = 50.;
-                    let n2 = (Math.cos(n_it_nor*n_tau*n_waves)*.5-.5)*5.;
-                    n2 *= Math.min(0,Math.sin(n_it_nor*n_tau*3));
-                    na = n_amp;
-                    na -= n2;
-                    const intermediatePoints = [];
-                    for (let n_it_subsample = 0; n_it_subsample < n_its_subsample; n_it_subsample++) {
-                        const t = n_it_subsample / n_its_subsample; // Interpolation factor [0, 1)
-                        const x = o_trn1.x + t * (o_trn2.x - o_trn1.x);
-                        const y = o_trn1.y + t * (o_trn2.y - o_trn1.y);
-                        const z = o_trn1.z + t * (o_trn2.z - o_trn1.z);
-                    
-                        const o_trn = f_o_vec(x, y, z);
-                        intermediatePoints.push(o_trn);
+                    let a_o_between = []
+                    let o_trn1 = f_o_vec( //this would be the point that is on the corner of the polygon
+                        Math.sin(n_it_nor*n_tau+n_rad_offset)*n_amp,
+                        Math.cos(n_it_nor*n_tau+n_rad_offset)*n_amp,
+                    ); 
+                    let o_trn2 = f_o_vec( //this would be the point that is on the corner of the polygon
+                        Math.sin(((n_it+1)/n_corners)*n_tau+n_rad_offset)*n_amp,
+                        Math.cos(((n_it+1)/n_corners)*n_tau+n_rad_offset)*n_amp,
+                    ); 
+                    for(let n_it_subsample = 0; n_it_subsample< n_its_subsample; n_it_subsample+=1){
+                        let n_it_nor_subsample = n_it_subsample/n_its_subsample;
+                        let n_it_nor_circle = n_it_nor + (n_it_nor_subsample/n_corners)
+                        let n_t = n_it_nor_subsample;
+                        let o_trn_between = f_o_vec(
+                            o_trn1.n_x + (o_trn2.n_x - o_trn1.n_x) * n_t,
+                            o_trn1.n_y + (o_trn2.n_y - o_trn1.n_y) * n_t,
+                            0
+                        );
+                        let n_radius = Math.sqrt(Math.pow(o_trn_between.n_x,2)+Math.pow(o_trn_between.n_y,2));// radius from point between. 
+                        // let n_radians_between = 0;// angle between. 
+                        n_radius = n_radius + Math.sin(n_it_nor_subsample*n_tau*10)*2;
+                        let o_trn_between2 = f_o_vec( //this would be the point that is on the corner of the polygon
+                            Math.sin(n_it_nor_circle*n_tau+n_rad_offset)*n_radius,
+                            Math.cos(n_it_nor_circle*n_tau+n_rad_offset)*n_radius,
+                        ); 
+                        a_o_between.push(o_trn_between2)
                     }
-                });
-                let a_o2 = [];
-                for(let n = 0; n< a_o.length; n+=1){
-                    let n
-                }
+                    
+                    return a_o_between
+
+
+                }).flat();
                 return a_o
+
             }
             let n_tau = Math.PI*2;
-            let n_layer_height_mm = 10.//0.2;///2; for more precision, subsampling, but slower!
+            let n_layer_height_mm = 0.2;//0.2;///2; for more precision, subsampling, but slower!
             let n_height = 100.;
             let n_corners = 5.;
             let n_radius = 20.;
@@ -1181,6 +1196,107 @@ let a_o_function = [
             ]
             return a_o
         }
+    ), 
+    f_o_function(
+        'outline_test',
+        function(){
+
+            function f_o_outline_mesh(a_o_p, n_thickness = 0.1, n_color = 0x000000) {
+            const a_o_point = a_o_p.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));
+            
+            // Close the loop (add first point at the end if not already closed)
+            if (!a_o_point[0].equals(a_o_point[a_o_point.length - 1])) {
+                a_o_point.push(a_o_point[0].clone());
+            }
+            
+            // Convert to LineGeometry format (flat array of positions)
+            const a_n_positions = [];
+            a_o_point.forEach(o_p => {
+                a_n_positions.push(o_p.x, o_p.y, o_p.z);
+            });
+            
+            const o_geometry = new LineGeometry();
+            o_geometry.setPositions(a_n_positions);
+            
+            const o_material = new LineMaterial({
+                color: n_color,
+                linewidth: 1, // in world units (requires proper rendering setup)
+                worldUnits: true, // makes linewidth in real units instead of pixels
+            });
+            
+            const o_line = new Line2(o_geometry, o_material);
+            // let o_line = f_o_shaded_mesh(o_geometry)
+            return o_line;
+        }
+        
+                    let f_o_extruded_mesh = function(a_o_p, n_extrusion){
+                        const a_o_point = a_o_p.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));
+                        const o_shape = new THREE.Shape(a_o_point);
+                        const extrudeSettings = {
+                            depth: n_extrusion, // 0.2mm extrusion
+                            bevelEnabled: false // No bevel for simple extrusion
+                        };
+                        const geometry = new THREE.ExtrudeGeometry(o_shape, extrudeSettings);
+                        const mesh = f_o_shaded_mesh(geometry);
+                        return mesh
+                    }
+                    let f_a_o_p = function(
+                        n_corners, 
+                        n_amp,
+                        n_rad_offset, 
+                        n_it_nor
+                    ){
+                        let na = n_amp;
+                        let a_o = new Array(n_corners).fill(0).map((v, n_idx)=>{
+                            let n_it = parseFloat(n_idx);
+                            let n_it_nor = n_it/n_corners;
+                            // modify the polygon here 
+                            let n_waves = 50.;
+                            let n2 = (Math.cos(n_it_nor*n_tau*n_waves)*.5-.5)*5.;
+                            n2 *= Math.min(0,Math.sin(n_it_nor*n_tau*3));
+                            na = n_amp;
+                            na -= n2;
+                            let o_trn = f_o_vec(
+                                Math.sin(n_tau*n_it_nor+n_rad_offset)*na,
+                                Math.cos(n_tau*n_it_nor+n_rad_offset)*na,
+                                0,
+                            )
+                            return o_trn
+                        });
+                        return a_o
+                    }
+                    let n_tau = Math.PI*2;
+                    let n_layer_height_mm = 0.2;///2; for more precision, subsampling, but slower!
+                    let n_height = 10.;
+                    let n_corners = 200.;
+                    let n_radius = 2.;
+                    let n_its = n_height / n_layer_height_mm;
+                    let a_o = [
+                        ...new Array(n_its).fill(0).map(
+                            (n, n_idx)=>{
+                                let n_it = parseFloat(n_idx)
+                                let n_it_nor = n_it/n_its;
+                                let n_r = (Math.sin(n_it_nor*n_tau*0.9)*.5+.5)*(n_radius*1.2)+n_radius
+                                let a_o_p = f_a_o_p(
+                                    n_corners, 
+                                    n_r,
+                                    n_it_nor*n_tau/3.,// twist, 
+                                    n_it_nor
+                                );
+                                let o_mesh = f_o_outline_mesh(
+                                    a_o_p, 
+                                    n_layer_height_mm
+                                )
+                                let n_rotation = 0;
+                                o_mesh.rotation.set(0,0,n_rotation)
+                                let n_z = n_it*n_layer_height_mm
+                                o_mesh.position.set(0,0,n_z);
+                                return o_mesh
+                            }
+                        )
+                    ]
+                    return a_o
+                }
     )
 ]
 let o_div = document;
@@ -1387,22 +1503,30 @@ function f_o_mesh_torus(o_center, n_radius, n_thickness = 0.5, n_segments = 32, 
 function f_export_stl() {
     const o_exporter = new STLExporter();
     
-    // Option 1: Export all meshes as separate objects in one STL
-    let s_stl = '';
+    // Create a temporary group to hold all meshes
+    const o_temp_group = new THREE.Group();
+    
+    // Collect and add all meshes to the group
     o_scene.traverse((o_child) => {
         if (o_child.isMesh) {
-            s_stl += o_exporter.parse(o_child, { binary: false });
+            // Clone the mesh to avoid modifying the original scene
+            o_temp_group.add(o_child.clone());
         }
     });
 
+    // Export the entire group as binary STL
+    const a_binary = o_exporter.parse(o_temp_group, { binary: true });
+
     // Download
-    const o_blob = new Blob([s_stl], { type: 'text/plain' });
+    const o_blob = new Blob([a_binary], { type: 'application/octet-stream' });
     const o_el_a = document.createElement('a');
     o_el_a.href = URL.createObjectURL(o_blob);
     o_el_a.download = `${o_state.s_name}.stl`;
     o_el_a.click();
+    
+    // Clean up
+    o_temp_group.clear();
 }
-
 
 function createThreeJSObjects(a_o_mesh) {
     // Clear only the world group, not the entire scene
