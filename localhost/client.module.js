@@ -199,6 +199,68 @@ let f_o_shaded_mesh = function(
     
     return o_group;
 };
+let f_o_geometry_from_a_o_p_polygon_vertex = function(a_o_p, n_its_corner){
+
+    let a_o_i = [];//indices
+    let a_o_v = [...a_o_p.map(o=>{return [o.n_x, o.n_y, o.n_z]}).flat()];//vertices
+    let n_its_layer = a_o_p.length / n_its_corner;
+    for(let n_it_layer = 0; n_it_layer < (n_its_layer-1); n_it_layer+=1){
+        let n_idx_start_corner_on_layer = n_it_layer*n_its_corner;
+        for(let n_it_corner = 0; n_it_corner < n_its_corner; n_it_corner+=1){
+
+            let n_idx_p = n_it_corner;
+            let n_idx_p_top = n_it_corner+n_its_corner;
+            let n_idx_p_next = (n_it_corner+1)%n_its_corner;
+            let n_idx_p_top_next = n_idx_p_next+n_its_corner;
+
+            n_idx_p+=n_idx_start_corner_on_layer
+            n_idx_p_top+=n_idx_start_corner_on_layer
+            n_idx_p_next+=n_idx_start_corner_on_layer
+            n_idx_p_top_next+=n_idx_start_corner_on_layer
+
+            a_o_i.push(n_idx_p, n_idx_p_next, n_idx_p_top);
+            a_o_i.push(n_idx_p_top, n_idx_p_next, n_idx_p_top_next);
+        }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setIndex(a_o_i);
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(a_o_v, 3));
+    
+    // Compute normals for proper lighting
+    geometry.computeVertexNormals();
+    return geometry
+
+}
+let f_o_geometry_from_a_o_p_polygon_face = function(a_o_p){
+
+    // assuming the first array item is the center point of the polygon 
+
+    
+    let a_o_i = [];//indices
+    let a_o_v = [...a_o_p.map(o=>{return [o.n_x, o.n_y, o.n_z]}).flat()];//vertices
+    let n_idx_vertex_center = 0;
+    let n_corners = a_o_p.length-1;
+    for(let n_i = 0; n_i < n_corners; n_i+=1){
+        let n_idx_p1 = n_idx_vertex_center; 
+        let n_idx_p2 = (n_i)%n_corners
+        let n_idx_p3 = (n_i+1)%n_corners
+        n_idx_p2+=1;//+1 because of added cneter point
+        n_idx_p3+=1;//+1 because of added cneter point
+        a_o_i.push(n_idx_p1,n_idx_p2,n_idx_p3)
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setIndex(a_o_i);
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(a_o_v, 3));
+    
+    // Compute normals for proper lighting
+    geometry.computeVertexNormals();
+    return geometry
+
+
+}
+
 let a_o_function = [
     f_o_function(
         'example_vase_with_layers', 
@@ -1469,78 +1531,19 @@ let a_o_function = [
         'custom_shape_easy', 
         function(){
 
-            let f_o_geometry_from_a_o_p_polygon_vertex = function(a_o_p, n_its_corner){
 
-                let a_o_i = [];//indices
-                let a_o_v = [...a_o_p.map(o=>{return [o.n_x, o.n_y, o.n_z]}).flat()];//vertices
-                let n_its_layer = a_o_p.length / n_its_corner;
-                for(let n_it_layer = 0; n_it_layer < (n_its_layer-1); n_it_layer+=1){
-                    let n_idx_start_corner_on_layer = n_it_layer*n_its_corner;
-                    for(let n_it_corner = 0; n_it_corner < n_its_corner; n_it_corner+=1){
-
-                        let n_idx_p = n_it_corner;
-                        let n_idx_p_top = n_it_corner+n_its_corner;
-                        let n_idx_p_next = (n_it_corner+1)%n_its_corner;
-                        let n_idx_p_top_next = n_idx_p_next+n_its_corner;
-
-                        n_idx_p+=n_idx_start_corner_on_layer
-                        n_idx_p_top+=n_idx_start_corner_on_layer
-                        n_idx_p_next+=n_idx_start_corner_on_layer
-                        n_idx_p_top_next+=n_idx_start_corner_on_layer
-
-                        a_o_i.push(n_idx_p, n_idx_p_next, n_idx_p_top);
-                        a_o_i.push(n_idx_p_top, n_idx_p_next, n_idx_p_top_next);
-                    }
-                }
-
-                const geometry = new THREE.BufferGeometry();
-                geometry.setIndex(a_o_i);
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(a_o_v, 3));
-                
-                // Compute normals for proper lighting
-                geometry.computeVertexNormals();
-                return geometry
-
-            }
-            let f_o_geometry_from_a_o_p_polygon_face = function(a_o_p){
-
-                // assuming the first array item is the center point of the polygon 
-
-                
-                let a_o_i = [];//indices
-                let a_o_v = [...a_o_p.map(o=>{return [o.n_x, o.n_y, o.n_z]}).flat()];//vertices
-                let n_idx_vertex_center = 0;
-                let n_corners = a_o_p.length-1;
-                for(let n_i = 0; n_i < n_corners; n_i+=1){
-                    let n_idx_p1 = n_idx_vertex_center; 
-                    let n_idx_p2 = (n_i)%n_corners
-                    let n_idx_p3 = (n_i+1)%n_corners
-                    console.log('loop')
-                    n_idx_p2+=1;//+1 because of added cneter point
-                    n_idx_p3+=1;//+1 because of added cneter point
-                    a_o_i.push(n_idx_p1,n_idx_p2,n_idx_p3)
-                }
-
-                const geometry = new THREE.BufferGeometry();
-                geometry.setIndex(a_o_i);
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(a_o_v, 3));
-                
-                // Compute normals for proper lighting
-                geometry.computeVertexNormals();
-                return geometry
-
-
-            }
 
             // Assuming you have your point generation functions as shown
             function f_o_vec(x, y, z) {
                 return { n_x: x, n_y: y, n_z: z };
             }
 
-            function f_a_o_p(o_trn, n_corners, n_radius, n_rad_offset) {
+            function f_a_o_p(o_trn, n_corners, n_radius, n_rad_offset, n_it_layer_nor) {
                 let a_o = new Array(n_corners).fill(0).map((v, n_idx) => {
                     let n_it = parseFloat(n_idx);
                     let n_it_nor = n_it / n_corners;
+                    let n_intensity = Math.sin(n_tau*n_it_nor*6.)*.5+.5;
+                    n_radius += Math.sin(n_tau*n_it_nor*30.)*.2*n_intensity;
                     let o_trn2 = f_o_vec(
                         Math.sin(n_tau * n_it_nor + n_rad_offset) * n_radius,
                         Math.cos(n_tau * n_it_nor + n_rad_offset) * n_radius,
@@ -1556,18 +1559,21 @@ let a_o_function = [
             }
 
             const n_tau = Math.PI * 2;
-            let n_its_layer = 2.;
-            let n_layer_height = 10.;
+            // all units in millimeter mm
+            let n_height = 180.;
+            let n_layer_height = 0.2;
+            let n_its_layer = parseInt(n_height / n_layer_height);
             let a_o_geometry = []
-            let a_o_p_outside = []
-            let n_corners = 3.;
+            let n_corners = 500.;
+            let a_o_p_outside = [];
+            let n_radius_base = 50.;
 
             for(let n_it_layer = 0.; n_it_layer < n_its_layer; n_it_layer+=1){
                 let n_it_layer_nor = n_it_layer/n_its_layer;
-                let n_z = n_it_layer_nor*n_layer_height;
-                let n_radius = 10.;
-                let n_rad_offset = 0.;
-                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z),n_corners, n_radius, n_rad_offset);
+                let n_z = n_it_layer*n_layer_height;
+                let n_radius = n_radius_base+Math.sin(n_it_layer_nor*n_tau*0.96+0.2)*18;
+                let n_rad_offset = n_it_layer_nor; // a slight twist
+                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z),n_corners, n_radius, n_rad_offset, n_it_layer_nor);
                 a_o_p_outside.push(...a_o_p);
                 if(n_it_layer == 0 || n_it_layer == n_its_layer-1){
                     // only bottom and top face
