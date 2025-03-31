@@ -1530,9 +1530,7 @@ let a_o_function = [
     f_o_function(
         'custom_shape_easy', 
         function(){
-
-
-
+            
             // Assuming you have your point generation functions as shown
             function f_o_vec(x, y, z) {
                 return { n_x: x, n_y: y, n_z: z };
@@ -1592,6 +1590,71 @@ let a_o_function = [
             return a_o_mesh
         }
     ), 
+    f_o_function(
+        'egg_shaped_vase', 
+        function(){
+            
+            // Assuming you have your point generation functions as shown
+            function f_o_vec(x, y, z) {
+                return { n_x: x, n_y: y, n_z: z };
+            }
+
+            function f_a_o_p(o_trn, n_corners, n_radius, n_rad_offset, n_it_layer_nor) {
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx) => {
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor = n_it / n_corners;
+                    let n_intensity = Math.sin(n_tau*n_it_nor*6.)*1;
+                    n_radius += Math.sin(n_tau*n_it_nor*30.)*.2*n_intensity;
+                    let o_trn2 = f_o_vec(
+                        Math.sin(n_tau * n_it_nor + n_rad_offset) * n_radius,
+                        Math.cos(n_tau * n_it_nor + n_rad_offset) * n_radius,
+                        0,
+                    );
+                    return f_o_vec(
+                        o_trn2.n_x + o_trn.n_x,
+                        o_trn2.n_y + o_trn.n_y,
+                        o_trn2.n_z + o_trn.n_z,
+                    );
+                });
+                return a_o;
+            }
+
+            const n_tau = Math.PI * 2;
+            // all units in millimeter mm
+            let n_height = 100.;
+            let n_layer_height = 0.2;
+            let n_its_layer = parseInt(n_height / n_layer_height);
+            let a_o_geometry = []
+            let n_corners = 500.;
+            let a_o_p_outside = [];
+            let n_radius_base = 70.;
+
+            for(let n_it_layer = 0.; n_it_layer < n_its_layer; n_it_layer+=1){
+                let n_it_layer_nor = n_it_layer/n_its_layer;
+                let n_z = n_it_layer*n_layer_height;
+                let n_x = (n_it_layer_nor-.5)*2.*0.75-0.1//-0.05;
+                let n_egg_shape = Math.sqrt(1.-(Math.pow(n_x,2)*0.4+0.6)); 
+                let n_radius = n_radius_base*n_egg_shape;
+                let n_rad_offset = n_it_layer_nor; // a slight twist
+                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z),n_corners, n_radius, n_rad_offset, n_it_layer_nor);
+                a_o_p_outside.push(...a_o_p);
+                if(n_it_layer == 0 || n_it_layer == n_its_layer-1){
+                    // only bottom and top face
+                    a_o_geometry.push(
+                        f_o_geometry_from_a_o_p_polygon_face([f_o_vec(0,0,n_z),...a_o_p])
+                    )
+                }
+            }
+
+            a_o_geometry.push(
+                // the outside / 'skirt' of the extruded polygon
+                f_o_geometry_from_a_o_p_polygon_vertex(a_o_p_outside, n_corners)
+            )
+            let a_o_mesh = a_o_geometry.map(o=>{return f_o_shaded_mesh(o)})
+            
+            return a_o_mesh
+        }
+    ),
 ]
 let o_div = document;
 let o_state = f_o_proxified_and_add_listeners(
