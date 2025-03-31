@@ -167,7 +167,9 @@ let f_o_shaded_mesh = function(
 ){
     // 1. Create the shaded material (Phong for nice lighting)
     const o_shaded_material = new THREE.MeshPhongMaterial({
-        color: 0xCBC3E3,    // red (can also use a CSS color string here)
+        color: 0xCBC3E3,    // red (can also use a CSS color string here), 
+        side: THREE.DoubleSide, // This makes it double-sided!
+
     });
     
     // 2. Create the wireframe material
@@ -578,6 +580,7 @@ let a_o_function = [
     f_o_function(
         'circles_extruded', 
         function(){
+
 
             let f_o_extruded_mesh_curvepoints = function(a_o_p, n_extrusion, n_points_per_circle){
                 // Convert to 2D points first
@@ -1297,7 +1300,292 @@ let a_o_function = [
                     ]
                     return a_o
                 }
-    )
+    ), 
+    f_o_function(
+        'custom_shape', 
+        function(){
+
+            let f_o_geometry_from_a_o_p_polygon_vertex = function(a_o_p, n_its_corner){
+
+                let a_o_i = [];//indices
+                let a_o_v = [...a_o_p.map(o=>{return [o.n_x, o.n_y, o.n_z]}).flat()];//vertices
+                let n_its_layer = a_o_p.length / n_its_corner;
+                for(let n_it_layer = 0; n_it_layer < (n_its_layer-1); n_it_layer+=1){
+                    let n_idx_start_corner_on_layer = n_it_layer*n_its_corner;
+                    for(let n_it_corner = 0; n_it_corner < n_its_corner; n_it_corner+=1){
+
+                        let n_idx_p = n_it_corner;
+                        let n_idx_p_top = n_it_corner+n_its_corner;
+                        let n_idx_p_next = (n_it_corner+1)%n_its_corner;
+                        let n_idx_p_top_next = n_idx_p_next+n_its_corner;
+
+                        n_idx_p+=n_idx_start_corner_on_layer
+                        n_idx_p_top+=n_idx_start_corner_on_layer
+                        n_idx_p_next+=n_idx_start_corner_on_layer
+                        n_idx_p_top_next+=n_idx_start_corner_on_layer
+
+                        a_o_i.push(n_idx_p, n_idx_p_next, n_idx_p_top);
+                        a_o_i.push(n_idx_p_top, n_idx_p_next, n_idx_p_top_next);
+                    }
+                }
+
+                const geometry = new THREE.BufferGeometry();
+                geometry.setIndex(a_o_i);
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(a_o_v, 3));
+                
+                // Compute normals for proper lighting
+                geometry.computeVertexNormals();
+                return geometry
+
+            }
+            let f_o_geometry_from_a_o_p_polygon_face = function(a_o_p){
+
+                // assuming the first array item is the center point of the polygon 
+
+                
+                let a_o_i = [];//indices
+                let a_o_v = [...a_o_p.map(o=>{return [o.n_x, o.n_y, o.n_z]}).flat()];//vertices
+                let n_idx_vertex_center = 0;
+                let n_corners = a_o_p.length-1;
+                for(let n_i = 0; n_i < n_corners; n_i+=1){
+                    let n_idx_p1 = n_idx_vertex_center; 
+                    let n_idx_p2 = (n_i)%n_corners
+                    let n_idx_p3 = (n_i+1)%n_corners
+                    console.log('loop')
+                    n_idx_p2+=1;//+1 because of added cneter point
+                    n_idx_p3+=1;//+1 because of added cneter point
+                    a_o_i.push(n_idx_p1,n_idx_p2,n_idx_p3)
+                }
+
+                const geometry = new THREE.BufferGeometry();
+                geometry.setIndex(a_o_i);
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(a_o_v, 3));
+                
+                // Compute normals for proper lighting
+                geometry.computeVertexNormals();
+                return geometry
+
+
+            }
+
+            // Assuming you have your point generation functions as shown
+            function f_o_vec(x, y, z) {
+                return { n_x: x, n_y: y, n_z: z };
+            }
+
+            function f_a_o_p(o_trn, n_corners, n_radius, n_rad_offset) {
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx) => {
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor = n_it / n_corners;
+                    let o_trn2 = f_o_vec(
+                        Math.sin(n_tau * n_it_nor + n_rad_offset) * n_radius,
+                        Math.cos(n_tau * n_it_nor + n_rad_offset) * n_radius,
+                        0,
+                    );
+                    return f_o_vec(
+                        o_trn2.n_x + o_trn.n_x,
+                        o_trn2.n_y + o_trn.n_y,
+                        o_trn2.n_z + o_trn.n_z,
+                    );
+                });
+                return a_o;
+            }
+
+            const n_tau = Math.PI * 2;
+            let n_its_layer = 2.;
+            let n_layer_height = 10.;
+            let a_o_geometry = []
+            let a_o_p_outside = []
+            let n_corners = 3.;
+
+            for(let n_it_layer = 0.; n_it_layer < n_its_layer; n_it_layer+=1){
+                let n_it_layer_nor = n_it_layer/n_its_layer;
+                let n_z = n_it_layer_nor*n_layer_height;
+                let n_radius = 10.;
+                let n_rad_offset = 0.;
+                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z),n_corners, n_radius, n_rad_offset);
+                a_o_p_outside.push(...a_o_p);
+                if(n_it_layer == 0 || n_it_layer == n_its_layer-1){
+                    // only bottom and top face
+                    a_o_geometry.push(
+                        f_o_geometry_from_a_o_p_polygon_face([f_o_vec(0,0,n_z),...a_o_p])
+                    )
+                }
+            }
+
+            a_o_geometry.push(
+                // the outside / 'skirt' of the extruded polygon
+                f_o_geometry_from_a_o_p_polygon_vertex(a_o_p_outside, n_corners)
+            )
+            let a_o_mesh = a_o_geometry.map(o=>{return f_o_shaded_mesh(o)})
+            
+            return a_o_mesh
+        }
+    ), 
+    f_o_function(
+        'o_test', 
+        function(){
+            // 1. Create the geometry
+            const geometry = new THREE.BufferGeometry();
+
+            // 2. Define vertices (for a pentagon in this case)
+            const vertices = new Float32Array([
+            // Center point (optional)
+            0, 0, 0,
+            
+            // Outer points (pentagon vertices)
+            1, 0, 0,          // right
+            0.31, 0.95, 0,    // top-right
+            -0.81, 0.59, 0,   // top-left
+            -0.81, -0.59, 0,  // bottom-left
+            0.31, -0.95, 0    // bottom-right
+            ]);
+
+            // 3. Define indices (how vertices connect to form triangles)
+            const indices = new Uint16Array([
+            // Triangles fanning out from center
+            0, 1, 2,  // center → right → top-right
+            0, 2, 3,  // center → top-right → top-left
+            0, 3, 4,  // center → top-left → bottom-left
+            0, 4, 5,  // center → bottom-left → bottom-right
+            0, 5, 1   // center → bottom-right → right
+            ]);
+
+            // 4. Apply to geometry
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+
+            // 5. Create material and mesh
+            const material = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+            side: THREE.DoubleSide, // Show both sides
+            wireframe: false
+            });
+
+            return [f_o_shaded_mesh(geometry)]
+        }
+    ),
+    f_o_function(
+        'custom_shape_easy', 
+        function(){
+
+            let f_o_geometry_from_a_o_p_polygon_vertex = function(a_o_p, n_its_corner){
+
+                let a_o_i = [];//indices
+                let a_o_v = [...a_o_p.map(o=>{return [o.n_x, o.n_y, o.n_z]}).flat()];//vertices
+                let n_its_layer = a_o_p.length / n_its_corner;
+                for(let n_it_layer = 0; n_it_layer < (n_its_layer-1); n_it_layer+=1){
+                    let n_idx_start_corner_on_layer = n_it_layer*n_its_corner;
+                    for(let n_it_corner = 0; n_it_corner < n_its_corner; n_it_corner+=1){
+
+                        let n_idx_p = n_it_corner;
+                        let n_idx_p_top = n_it_corner+n_its_corner;
+                        let n_idx_p_next = (n_it_corner+1)%n_its_corner;
+                        let n_idx_p_top_next = n_idx_p_next+n_its_corner;
+
+                        n_idx_p+=n_idx_start_corner_on_layer
+                        n_idx_p_top+=n_idx_start_corner_on_layer
+                        n_idx_p_next+=n_idx_start_corner_on_layer
+                        n_idx_p_top_next+=n_idx_start_corner_on_layer
+
+                        a_o_i.push(n_idx_p, n_idx_p_next, n_idx_p_top);
+                        a_o_i.push(n_idx_p_top, n_idx_p_next, n_idx_p_top_next);
+                    }
+                }
+
+                const geometry = new THREE.BufferGeometry();
+                geometry.setIndex(a_o_i);
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(a_o_v, 3));
+                
+                // Compute normals for proper lighting
+                geometry.computeVertexNormals();
+                return geometry
+
+            }
+            let f_o_geometry_from_a_o_p_polygon_face = function(a_o_p){
+
+                // assuming the first array item is the center point of the polygon 
+
+                
+                let a_o_i = [];//indices
+                let a_o_v = [...a_o_p.map(o=>{return [o.n_x, o.n_y, o.n_z]}).flat()];//vertices
+                let n_idx_vertex_center = 0;
+                let n_corners = a_o_p.length-1;
+                for(let n_i = 0; n_i < n_corners; n_i+=1){
+                    let n_idx_p1 = n_idx_vertex_center; 
+                    let n_idx_p2 = (n_i)%n_corners
+                    let n_idx_p3 = (n_i+1)%n_corners
+                    console.log('loop')
+                    n_idx_p2+=1;//+1 because of added cneter point
+                    n_idx_p3+=1;//+1 because of added cneter point
+                    a_o_i.push(n_idx_p1,n_idx_p2,n_idx_p3)
+                }
+
+                const geometry = new THREE.BufferGeometry();
+                geometry.setIndex(a_o_i);
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(a_o_v, 3));
+                
+                // Compute normals for proper lighting
+                geometry.computeVertexNormals();
+                return geometry
+
+
+            }
+
+            // Assuming you have your point generation functions as shown
+            function f_o_vec(x, y, z) {
+                return { n_x: x, n_y: y, n_z: z };
+            }
+
+            function f_a_o_p(o_trn, n_corners, n_radius, n_rad_offset) {
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx) => {
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor = n_it / n_corners;
+                    let o_trn2 = f_o_vec(
+                        Math.sin(n_tau * n_it_nor + n_rad_offset) * n_radius,
+                        Math.cos(n_tau * n_it_nor + n_rad_offset) * n_radius,
+                        0,
+                    );
+                    return f_o_vec(
+                        o_trn2.n_x + o_trn.n_x,
+                        o_trn2.n_y + o_trn.n_y,
+                        o_trn2.n_z + o_trn.n_z,
+                    );
+                });
+                return a_o;
+            }
+
+            const n_tau = Math.PI * 2;
+            let n_its_layer = 2.;
+            let n_layer_height = 10.;
+            let a_o_geometry = []
+            let a_o_p_outside = []
+            let n_corners = 3.;
+
+            for(let n_it_layer = 0.; n_it_layer < n_its_layer; n_it_layer+=1){
+                let n_it_layer_nor = n_it_layer/n_its_layer;
+                let n_z = n_it_layer_nor*n_layer_height;
+                let n_radius = 10.;
+                let n_rad_offset = 0.;
+                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z),n_corners, n_radius, n_rad_offset);
+                a_o_p_outside.push(...a_o_p);
+                if(n_it_layer == 0 || n_it_layer == n_its_layer-1){
+                    // only bottom and top face
+                    a_o_geometry.push(
+                        f_o_geometry_from_a_o_p_polygon_face([f_o_vec(0,0,n_z),...a_o_p])
+                    )
+                }
+            }
+
+            a_o_geometry.push(
+                // the outside / 'skirt' of the extruded polygon
+                f_o_geometry_from_a_o_p_polygon_vertex(a_o_p_outside, n_corners)
+            )
+            let a_o_mesh = a_o_geometry.map(o=>{return f_o_shaded_mesh(o)})
+            
+            return a_o_mesh
+        }
+    ), 
 ]
 let o_div = document;
 let o_state = f_o_proxified_and_add_listeners(
