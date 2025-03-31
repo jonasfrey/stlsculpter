@@ -1655,6 +1655,103 @@ let a_o_function = [
             return a_o_mesh
         }
     ),
+    f_o_function(
+        'polygon_with_waves', 
+        function(){
+            
+            // Assuming you have your point generation functions as shown
+            function f_o_vec(x, y, z) {
+                return { n_x: x, n_y: y, n_z: z };
+            }
+
+            function f_a_o_p(o_trn, n_corners, n_its_subsample, n_amp, n_rad_offset, n_it_layer_nor) {
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx)=>{
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor_corner = n_it/n_corners;
+                    let a_o_between = []
+                    let o_trn1 = f_o_vec( //this would be the point that is on the corner of the polygon
+                        Math.sin(n_it_nor_corner*n_tau+n_rad_offset)*n_amp,
+                        Math.cos(n_it_nor_corner*n_tau+n_rad_offset)*n_amp,
+                        0
+                    ); 
+                    let o_trn2 = f_o_vec( //this would be the point that is on the corner of the polygon
+                        Math.sin(((n_it+1)/n_corners)*n_tau+n_rad_offset)*n_amp,
+                        Math.cos(((n_it+1)/n_corners)*n_tau+n_rad_offset)*n_amp,
+                        0
+                    ); 
+                    for(let n_it_subsample = 0; n_it_subsample< n_its_subsample; n_it_subsample+=1){
+                        let n_it_nor_subsample = n_it_subsample/n_its_subsample;
+                        let n_it_nor_circle = n_it_nor_corner + (n_it_nor_subsample/n_corners)
+                        let n_t = n_it_nor_subsample;
+                        let o_trn_between = f_o_vec(
+                            o_trn1.n_x + (o_trn2.n_x - o_trn1.n_x) * n_t,
+                            o_trn1.n_y + (o_trn2.n_y - o_trn1.n_y) * n_t,
+                            0
+                        );
+                        let n_radius = Math.sqrt(Math.pow(o_trn_between.n_x,2)+Math.pow(o_trn_between.n_y,2));// radius from point between. 
+                        // let n_radians_between = 0;// angle between. 
+                        let n_sin = Math.sin(n_it_nor_subsample*n_tau*33)*1;
+                        let n_sin_corner = Math.sin(((n_it_nor_corner+n_it_nor_subsample/n_corners)+(1./n_corners/2))*n_tau*n_corners*.5);
+                        n_sin_corner = Math.min(n_sin_corner, 0);
+                        n_radius = n_radius + n_sin*n_sin_corner;
+                        let o_trn_between2 = f_o_vec( //this would be the point that is on the corner of the polygon
+                            Math.sin(n_it_nor_circle*n_tau+n_rad_offset)*n_radius,
+                            Math.cos(n_it_nor_circle*n_tau+n_rad_offset)*n_radius,
+                            0
+                        );
+                        o_trn_between2 = f_o_vec(
+                            o_trn.n_x+o_trn_between2.n_x,
+                            o_trn.n_y+o_trn_between2.n_y,
+                            o_trn.n_z+o_trn_between2.n_z,
+                        )
+                        a_o_between.push(o_trn_between2)
+                    }
+                    
+                    return a_o_between
+
+
+                }).flat();
+                return a_o
+            }
+
+            const n_tau = Math.PI * 2;
+            // all units in millimeter mm
+            let n_height = 200.;
+            let n_layer_height = 0.2;
+            let n_its_layer = parseInt(n_height / n_layer_height);
+            let a_o_geometry = []
+            let n_corners = 6.;
+            let n_its_subsample = 100.;
+            let a_o_p_outside = [];
+            let n_radius_base = n_height/4;
+            // const phi = (1 + Math.sqrt(5)) / 2;
+
+
+            for(let n_it_layer = 0.; n_it_layer < n_its_layer; n_it_layer+=1){
+                let n_it_layer_nor = n_it_layer/n_its_layer;
+                let n_z = n_it_layer*n_layer_height;
+                let n_radius = n_radius_base+Math.sin(n_it_layer_nor*n_tau)*n_radius_base*.4;
+                n_radius += Math.sin(n_it_layer_nor*n_tau*12)*0.2;
+                let n_rad_offset = n_it_layer_nor*(n_tau/n_corners);
+                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z),n_corners,n_its_subsample,n_radius, n_rad_offset, n_it_layer_nor);
+                a_o_p_outside.push(...a_o_p);
+                if(n_it_layer == 0 || n_it_layer == n_its_layer-1){
+                    // only bottom and top face
+                    a_o_geometry.push(
+                        f_o_geometry_from_a_o_p_polygon_face([f_o_vec(0,0,n_z),...a_o_p])
+                    )
+                }
+            }
+
+            a_o_geometry.push(
+                // the outside / 'skirt' of the extruded polygon
+                f_o_geometry_from_a_o_p_polygon_vertex(a_o_p_outside, n_corners*n_its_subsample)
+            )
+            let a_o_mesh = a_o_geometry.map(o=>{return f_o_shaded_mesh(o)})
+            
+            return a_o_mesh
+        }
+    ),
 ]
 let o_div = document;
 let o_state = f_o_proxified_and_add_listeners(
