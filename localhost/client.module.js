@@ -356,7 +356,7 @@ let a_o_function = [
             
             return a_o_mesh
         }
-    )
+    ),
     f_o_function(
         'its a BOWL!', 
         function(){
