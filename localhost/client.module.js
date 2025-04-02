@@ -264,6 +264,93 @@ let f_o_geometry_from_a_o_p_polygon_face = function(a_o_p){
 
 let a_o_function = [
     f_o_function(
+        'vase_bold',
+        function() {
+
+            let n_its_wave = 12.;
+            // Assuming you have your point generation functions as shown
+            function f_o_vec(x, y, z) {
+                return { n_x: x, n_y: y, n_z: z };
+            }
+        
+            function f_a_o_p(o_trn, n_corners, n_amp, n_rad_offset, n_it_layer_nor) {
+        
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx) => {
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor_corner = n_it / n_corners;
+                    let nx = n_it_layer_nor*n_it_layer_nor;
+                    let a2 = Math.sin(nx * 40. * n_tau) * 0.2;
+                    let h = Math.sin(n_it_nor_corner * n_tau * 33) * 0.02 * a2;
+                    // https://www.desmos.com/calculator/mlhhw6p2du
+                    let na = n_amp+h*100;
+        
+                    let o_trn1 = f_o_vec( //this would be the point that is on the corner of the polygon
+                        Math.sin(n_it_nor_corner * n_tau + n_rad_offset) * na,
+                        Math.cos(n_it_nor_corner * n_tau + n_rad_offset) * na,
+                        0
+                    );
+        
+                    o_trn1 = f_o_vec(
+                        o_trn.n_x + o_trn1.n_x,
+                        o_trn.n_y + o_trn1.n_y,
+                        o_trn.n_z + o_trn1.n_z,
+                    )
+        
+                    return o_trn1
+        
+        
+                }).flat();
+        
+                return a_o
+            }
+        
+            const n_tau = Math.PI * 2;
+            // all units in millimeter mm
+            let n_height = 200.;
+            let n_layer_height = 0.6;
+            let n_its_layer = parseInt(n_height / n_layer_height);
+            let a_o_geometry = []
+            let n_corners = 300.;
+            let a_o_p_outside = [];
+            let n_radius_base = 20;
+            // const phi = (1 + Math.sqrt(5)) / 2;
+        
+            //https://www.desmos.com/calculator/9jw5utw0fa
+            for (let n_it_layer = 0.; n_it_layer < n_its_layer; n_it_layer += 1) {
+                let n_it_layer_nor = n_it_layer / n_its_layer;
+                let n_z = n_it_layer * n_layer_height;
+                let n_radius = n_radius_base;
+                let ne = 2.71828;
+                let x = n_it_layer_nor;
+                let no = Math.pow(ne, -5 * x) * Math.sin(x * 0.1) * 20;
+        
+                // e^{-2x}\cdot\sin\left(x+0.1\cdot2\right)\cdot1.2
+                n_radius += no*200;
+                let n_rad_offset = n_it_layer_nor * (n_tau / n_corners / 2);
+                n_rad_offset = 0;
+                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z), n_corners, n_radius, n_rad_offset, n_it_layer_nor);
+                a_o_p_outside.push(...a_o_p);
+        
+        
+                if (n_it_layer == 0 || n_it_layer == n_its_layer - 1) {
+                    // only bottom and top face
+                    a_o_geometry.push(
+                        f_o_geometry_from_a_o_p_polygon_face([f_o_vec(0, 0, n_z), ...a_o_p])
+                    )
+        
+                }
+            }
+        
+            a_o_geometry.push(
+                // the outside / 'skirt' of the extruded polygon
+                f_o_geometry_from_a_o_p_polygon_vertex(a_o_p_outside, n_corners)
+            )
+            let a_o_mesh = a_o_geometry.map(o => { return f_o_shaded_mesh(o) })
+        
+            return a_o_mesh
+        }
+    ),
+    f_o_function(
         'in_the_works',
         function(){
             
