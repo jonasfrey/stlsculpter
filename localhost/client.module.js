@@ -15,6 +15,8 @@ import * as THREE from '/three.js-r126/build/three.module.js';
 import { OrbitControls } from '/three.js-r126/examples/jsm/controls/OrbitControls.js';
 import { STLExporter } from '/three.js-r126/examples/jsm/exporters/STLExporter.js';
 import { ConvexGeometry } from '/three.js-r126/examples/jsm/geometries/ConvexGeometry.js';
+import { SimplifyModifier } from '/three.js-r126/examples/jsm/modifiers/SimplifyModifier.js';
+
 import { BufferGeometryUtils } from '/three.js-r126/examples/jsm/utils/BufferGeometryUtils.js';
 // import { STLExporter } from '/three/STLExporter.js';
 // if you need more addons/examples download from here...
@@ -39,7 +41,6 @@ f_add_css(
 
 import * as o_mod from "./@tarikjabiri/dxf/lib/index.esm.js";
 let o_dxf;
-
 
 
 
@@ -193,7 +194,127 @@ let f_o_shaded_mesh = function(
     
     return o_group;
 };
+function mergeClosePoints(points, threshold = 0.001) {
+    let mergedPoints = [];
+    let usedIndices = new Set();
+    
+    for (let i = 0; i < points.length; i++) {
+        if (usedIndices.has(i)) continue;
+        
+        let current = points[i];
+        let similarPoints = [current];
+        
+        // Find all points close to current point
+        for (let j = i + 1; j < points.length; j++) {
+            if (usedIndices.has(j)) continue;
+            
+            let distance = current.distanceTo(points[j]);
+            if (distance < threshold) {
+                similarPoints.push(points[j]);
+                usedIndices.add(j);
+            }
+        }
+        
+        // Calculate average position
+        let average = new THREE.Vector3();
+        similarPoints.forEach(p => average.add(p));
+        average.divideScalar(similarPoints.length);
+        
+        mergedPoints.push(average);
+    }
+    
+    return mergedPoints;
+}
+
 let a_o_function = [
+    f_o_function(
+        'example_merge', 
+        function(){
+            let f_o_extruded_mesh = function(a_o_p, n_extrusion){
+                let a_o_point = a_o_p.map(o => new THREE.Vector3(o.n_x, o.n_y, o.n_z));
+                    console.log('before')
+                    console.log(a_o_point.length)
+                    let mergeThreshold = 0.2;
+                    // Merge close points before creating shape
+                    if (mergeThreshold > 0) {
+                        a_o_point = mergeClosePoints(a_o_point, mergeThreshold);
+                    }
+                    console.log('after')
+                    console.log(a_o_point.length)
+                    
+                    // Ensure we have enough points after merging
+                    if (a_o_point.length < 3) {
+                        console.error("Not enough points after merging");
+                        return null;
+                    }
+
+                const o_shape = new THREE.Shape(a_o_point);
+                const extrudeSettings = {
+                    depth: n_extrusion, // 0.2mm extrusion
+                    bevelEnabled: false // No bevel for simple extrusion
+                };
+                const geometry = new THREE.ExtrudeGeometry(o_shape, extrudeSettings);
+                const mesh = f_o_shaded_mesh(geometry);
+                return mesh
+            }
+            let f_a_o_reg_poly_star = function(
+                o_trn,
+                n_corners, 
+                n_radius_1, 
+                n_radius_2,
+                n_rad_offset
+            ){
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx)=>{
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor = n_it/n_corners;
+                    let n_amp = n_radius_1+Math.sin(n_it_nor*n_tau*10)*(Math.sin(n_it_nor*n_tau*3)*.5+.5)*10;
+                    let o_trn2 = f_o_vec(
+                        Math.sin(n_tau*n_it_nor+n_rad_offset)*n_amp,
+                        Math.cos(n_tau*n_it_nor+n_rad_offset)*n_amp,
+                        0,
+                    )
+                    return f_o_vec(
+                        o_trn.n_x+o_trn2.n_x,
+                        o_trn.n_y+o_trn2.n_y,
+                        o_trn.n_z+o_trn2.n_z,
+                    );
+                });
+                return a_o
+            }
+            let n_tau = Math.PI*2;
+            let n_layer_height_mm = 0.2;///2. for more precision, subsampling
+            let n_height = 150.;
+            let n_corners = 100.;
+            let n_radius_1 = 100.;
+            let n_radius_2 = 120.;
+            let n_its = n_height / n_layer_height_mm;
+            let a_o = [
+                ...new Array(n_its).fill(0).map(
+                    (n, n_idx)=>{
+                        let n_it = parseFloat(n_idx)
+                        let n_it_nor = n_it/n_its;
+                        let n_amp_radius = (Math.cos(n_it_nor*.5*n_tau+(n_tau*0.8))*.5+.5)*0.3+0.2
+                        let a_o_p = f_a_o_reg_poly_star(
+                            f_o_vec(0,0,0),
+                            n_corners, 
+                            n_radius_1*n_amp_radius, 
+                            n_radius_2*n_amp_radius, 
+                            0
+                        );
+                        let o_mesh = f_o_extruded_mesh(
+                            a_o_p, 
+                            n_layer_height_mm
+                        )
+                        o_mesh.rotation.set(0,0,n_it_nor*n_tau*0.2)
+                        o_mesh.position.set(0,0,n_it*n_layer_height_mm);
+                        return o_mesh
+                    }
+                )
+            ]
+            return a_o
+        }
+    ),
+
     f_o_function(
         'example_vase_with_layers', 
         function(){
@@ -1478,12 +1599,13 @@ function createRegularPolygon(x, y, radius, corners, n_offset_radians = 0) {
 
 
 let f_update_rendering = function(){
-    console.log('Content changed:', o_monaco_editor.getValue());
+    // console.log('Content changed:', o_monaco_editor.getValue());
     let s = o_monaco_editor.getValue();
     let s_f = `(${s})()`;
-    console.log(s_f)  
+    // console.log(s_f)  
     let a_o = eval(s_f);
-    console.log(a_o)
+    // let o_mesh = mergeMeshesWithVertexMerge(a_o,0.5);
+    // console.log(a_o)
     
     createThreeJSObjects(a_o);
 }
