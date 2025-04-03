@@ -264,6 +264,115 @@ let f_o_geometry_from_a_o_p_polygon_face = function(a_o_p){
 
 let a_o_function = [
     f_o_function(
+        'vase_twisted_trinity_tidal', 
+        function() {
+            noise.seed(Math.random());
+
+            let n_its_wave = 12.;
+            // Assuming you have your point generation functions as shown
+            function f_o_vec(x, y, z) {
+                return { n_x: x, n_y: y, n_z: z };
+            }
+        
+            function f_a_o_p(o_trn, n_corners, n_amp, n_rad_offset, n_it_layer_nor) {
+        
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx) => {
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor_corner = n_it / n_corners;
+
+                    let na = n_amp;
+                    let n_x = Math.sin(n_it_nor_corner * n_tau + n_rad_offset);
+                    let n_y = Math.cos(n_it_nor_corner * n_tau + n_rad_offset);
+
+                    //lets introduce some symetry // wtf was bini fürne autist dassi dass efach so cha
+                    let nic = (Math.sin(n_it_nor_corner*n_tau*3.)*.5+.5)*.2;
+                    let n_x2 = Math.sin(nic * n_tau + n_rad_offset);
+                    let n_y2 = Math.cos(nic * n_tau + n_rad_offset);
+
+        
+                    let o_trn1 = f_o_vec( //this would be the point that is on the corner of the polygon
+                        n_x * na,
+                        n_y * na,
+                        0
+                    );
+
+                   
+                    let n_noise_layer = noise.simplex2(
+                        (n_x2+n_it_layer_nor)*2,
+                        (n_y2+n_it_layer_nor)*1.9, 
+                        0.5
+                    );
+                    let np2 = noise.simplex2(
+                        (Math.sin(n_it_nor_corner * n_tau))*0.1,
+                        (Math.cos(n_it_nor_corner * n_tau))*0.1, 
+                        0.5
+                    );
+                    n_noise_layer = (n_noise_layer +1)*.5;// from -1 to 1, to 0. to 1.0
+
+                    na = n_amp+n_noise_layer*n_amp*.5;
+                    o_trn1 = f_o_vec( //this would be the point that is on the corner of the polygon        
+                        Math.sin((n_it_nor_corner+np2*0.02) * n_tau + n_rad_offset) * na,
+                        Math.cos((n_it_nor_corner+np2*0.02) * n_tau + n_rad_offset) * na,
+                        0
+                    );
+
+                    o_trn1 = f_o_vec(
+                        o_trn.n_x + o_trn1.n_x,
+                        o_trn.n_y + o_trn1.n_y,
+                        o_trn.n_z + o_trn1.n_z,
+                    )
+        
+                    return o_trn1
+        
+        
+                }).flat();
+        
+                return a_o
+            }
+        
+            const n_tau = Math.PI * 2;
+            // all units in millimeter mm
+            let n_height = 200.;
+            let n_layer_height = 0.6;
+            let n_its_layer = parseInt(n_height / n_layer_height);
+            let a_o_geometry = []
+            let n_corners = 500.;
+            let a_o_p_outside = [];
+            let n_radius_base = 50;
+            // const phi = (1 + Math.sqrt(5)) / 2;
+            
+            //https://www.desmos.com/calculator/9jw5utw0fa
+            for (let n_it_layer = 0.; n_it_layer < n_its_layer; n_it_layer += 1) {
+                let n_it_layer_nor = n_it_layer / n_its_layer;
+                let n_z = n_it_layer * n_layer_height;
+                let ne = 2.71828;
+                let x = n_it_layer_nor;
+                let no = Math.pow(ne, -5 * x) * Math.sin(x * 0.1) * 20;
+                let n_radius = n_radius_base+Math.sin(n_it_layer_nor*n_tau*3.)*10;
+                let n_rad_offset = n_it_layer_nor * n_tau /3
+                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z), n_corners, n_radius, n_rad_offset, n_it_layer_nor);
+                a_o_p_outside.push(...a_o_p);
+        
+        
+                if (n_it_layer == 0 || n_it_layer == n_its_layer - 1) {
+                    // only bottom and top face
+                    a_o_geometry.push(
+                        f_o_geometry_from_a_o_p_polygon_face([f_o_vec(0, 0, n_z), ...a_o_p])
+                    )
+        
+                }
+            }
+        
+            a_o_geometry.push(
+                // the outside / 'skirt' of the extruded polygon
+                f_o_geometry_from_a_o_p_polygon_vertex(a_o_p_outside, n_corners)
+            )
+            let a_o_mesh = a_o_geometry.map(o => { return f_o_shaded_mesh(o) })
+        
+            return a_o_mesh
+        }
+    ),
+    f_o_function(
         'vase_noise',
         function() {
             noise.seed(Math.random());
