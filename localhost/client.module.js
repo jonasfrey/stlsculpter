@@ -284,6 +284,11 @@ let a_o_function = [
                     let n_x = Math.sin(n_it_nor_corner * n_tau + n_rad_offset);
                     let n_y = Math.cos(n_it_nor_corner * n_tau + n_rad_offset);
 
+                    //lets introduce some symetry // wtf was bini fürne autist dassi dass efach so cha
+                    let nic = (Math.sin(n_it_nor_corner*n_tau*3.)*.5+.5)*.3;
+                    let n_x2 = Math.sin(nic * n_tau + n_rad_offset);
+                    let n_y2 = Math.cos(nic * n_tau + n_rad_offset);
+
         
                     let o_trn1 = f_o_vec( //this would be the point that is on the corner of the polygon
                         n_x * na,
@@ -293,8 +298,8 @@ let a_o_function = [
 
                    
                     let n_noise_layer = noise.simplex2(
-                        (n_x+n_it_layer_nor)*1.2,
-                        (n_y+n_it_layer_nor)*1.2
+                        (n_x2+n_it_layer_nor)*1.2,
+                        (n_y2+n_it_layer_nor)*1.2
                     );
                     n_noise_layer = (n_noise_layer + 1)*.5;// from -1 to 1, to 0. to 1.0
 
@@ -353,7 +358,7 @@ let a_o_function = [
                 }
             }
         
-            a_o_geometry.push(
+            a_o_geometry.push(  
                 // the outside / 'skirt' of the extruded polygon
                 f_o_geometry_from_a_o_p_polygon_vertex(a_o_p_outside, n_corners)
             )
