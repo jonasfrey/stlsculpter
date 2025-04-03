@@ -264,6 +264,105 @@ let f_o_geometry_from_a_o_p_polygon_face = function(a_o_p){
 
 let a_o_function = [
     f_o_function(
+        'vase_noise',
+        function() {
+            noise.seed(Math.random());
+
+            let n_its_wave = 12.;
+            // Assuming you have your point generation functions as shown
+            function f_o_vec(x, y, z) {
+                return { n_x: x, n_y: y, n_z: z };
+            }
+        
+            function f_a_o_p(o_trn, n_corners, n_amp, n_rad_offset, n_it_layer_nor) {
+        
+                let a_o = new Array(n_corners).fill(0).map((v, n_idx) => {
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor_corner = n_it / n_corners;
+
+                    let na = n_amp;
+                    let n_x = Math.sin(n_it_nor_corner * n_tau + n_rad_offset);
+                    let n_y = Math.cos(n_it_nor_corner * n_tau + n_rad_offset);
+
+        
+                    let o_trn1 = f_o_vec( //this would be the point that is on the corner of the polygon
+                        n_x * na,
+                        n_y * na,
+                        0
+                    );
+
+                   
+                    let n_noise_layer = noise.simplex2(
+                        (n_x+n_it_layer_nor)*1.2,
+                        (n_y+n_it_layer_nor)*1.2
+                    );
+                    n_noise_layer = (n_noise_layer + 1)*.5;// from -1 to 1, to 0. to 1.0
+
+                    na = n_amp+n_noise_layer*n_amp*.5;
+                    o_trn1 = f_o_vec( //this would be the point that is on the corner of the polygon        
+                        Math.sin(n_it_nor_corner * n_tau + n_rad_offset) * na,
+                        Math.cos(n_it_nor_corner * n_tau + n_rad_offset) * na,
+                        0
+                    );
+
+                    o_trn1 = f_o_vec(
+                        o_trn.n_x + o_trn1.n_x,
+                        o_trn.n_y + o_trn1.n_y,
+                        o_trn.n_z + o_trn1.n_z,
+                    )
+        
+                    return o_trn1
+        
+        
+                }).flat();
+        
+                return a_o
+            }
+        
+            const n_tau = Math.PI * 2;
+            // all units in millimeter mm
+            let n_height = 200.;
+            let n_layer_height = 0.6;
+            let n_its_layer = parseInt(n_height / n_layer_height);
+            let a_o_geometry = []
+            let n_corners = 300.;
+            let a_o_p_outside = [];
+            let n_radius_base = 50;
+            // const phi = (1 + Math.sqrt(5)) / 2;
+            
+            //https://www.desmos.com/calculator/9jw5utw0fa
+            for (let n_it_layer = 0.; n_it_layer < n_its_layer; n_it_layer += 1) {
+                let n_it_layer_nor = n_it_layer / n_its_layer;
+                let n_z = n_it_layer * n_layer_height;
+                let ne = 2.71828;
+                let x = n_it_layer_nor;
+                let no = Math.pow(ne, -5 * x) * Math.sin(x * 0.1) * 20;
+                let n_radius = n_radius_base+Math.sin(n_it_layer_nor*n_tau*0.8)*20;
+                let n_rad_offset = n_it_layer_nor * (n_tau / n_corners / 2);
+                n_rad_offset = 0;
+                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z), n_corners, n_radius, n_rad_offset, n_it_layer_nor);
+                a_o_p_outside.push(...a_o_p);
+        
+        
+                if (n_it_layer == 0 || n_it_layer == n_its_layer - 1) {
+                    // only bottom and top face
+                    a_o_geometry.push(
+                        f_o_geometry_from_a_o_p_polygon_face([f_o_vec(0, 0, n_z), ...a_o_p])
+                    )
+        
+                }
+            }
+        
+            a_o_geometry.push(
+                // the outside / 'skirt' of the extruded polygon
+                f_o_geometry_from_a_o_p_polygon_vertex(a_o_p_outside, n_corners)
+            )
+            let a_o_mesh = a_o_geometry.map(o => { return f_o_shaded_mesh(o) })
+        
+            return a_o_mesh
+        }
+    ),
+    f_o_function(
         'vase_bold',
         function() {
 
@@ -2246,6 +2345,8 @@ let a_o_function = [
 let o_div = document;
 let o_state = f_o_proxified_and_add_listeners(
     {
+        n_id_timeout_renderrefresh: 0, 
+        n_ms_timeout_renderrefresh: 333,
         n_ts_ov_changed: false, 
         ov: {},
         b_add_circle_caps: true,
@@ -2483,7 +2584,7 @@ function createThreeJSObjects(a_o_mesh) {
         // o_scene.add(o)
     })
 
-    fitCameraToGroup(o_camera, o_world_group);
+    // fitCameraToGroup(o_camera, o_world_group);
 }
 
 
@@ -2569,9 +2670,14 @@ require(['vs/editor/editor.main'], function() {
     });
     // Listen for content changes
     o_monaco_editor.onDidChangeModelContent((event) => {
-        f_update_rendering();
+        clearTimeout(o_state.n_id_timeout_renderrefresh);
+        o_state.n_id_timeout_renderrefresh = setTimeout(function(){
+
+            f_update_rendering();
+        },o_state.n_ms_timeout_renderrefresh)
 
     });
+
     f_update_from_o_function(o_state.o_function)
 
 });
@@ -2642,6 +2748,8 @@ o_scene.add(o_world_group);
 const o_camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000); // Aspect ratio 1 for square canvas
 globalThis.o_camera = o_camera
 
+o_camera.position.set(3.6577695813301743, -431.2580386693436,  237.3374585409182)
+
 const o_renderer = new THREE.WebGLRenderer({ antialias: true });
 // o_renderer.setSize(500, 500);
 document.querySelector('#canvas')?.appendChild(o_renderer.domElement);
@@ -2688,11 +2796,11 @@ function animate() {
     ); // Position in front of camera
 
     // Clean up invalid objects
-    o_world_group.traverse(o_child => {
-        if (o_child.isMesh && !o_child.geometry) {
-            o_world_group.remove(o_child);
-        }
-    });
+    // o_world_group.traverse(o_child => {
+    //     if (o_child.isMesh && !o_child.geometry) {
+    //         o_world_group.remove(o_child);
+    //     }
+    // });
 
     if (o_scene && o_camera && o_renderer) {
         o_renderer.render(o_scene, o_camera);
