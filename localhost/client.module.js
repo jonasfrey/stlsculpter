@@ -25,7 +25,7 @@ import { LineGeometry } from '/three.js-r126/examples/jsm/lines/LineGeometry.js'
 // import { STLExporter } from '/three/STLExporter.js';
 // if you need more addons/examples download from here...
 //  
-
+let s_id_error_msg = 'error_msg'
 o_variables.n_rem_font_size_base = 1. // adjust font size, other variables can also be adapted before adding the css to the dom
 o_variables.n_rem_padding_interactive_elements = 0.5; // adjust padding for interactive elements 
 f_add_css(
@@ -34,7 +34,15 @@ f_add_css(
         min-height: 100vh;
         min-width: 100vw;
     }
-
+    #${s_id_error_msg}{
+        position: absolute;
+        width: 100%;
+        top: 0;
+        background: #f5c0c099;
+        color: #5e0505;
+        padding: 1rem;
+        z-index: 111;
+    }
     ${
         f_s_css_from_o_variables(
             o_variables
@@ -264,9 +272,316 @@ let f_o_geometry_from_a_o_p_polygon_face = function(a_o_p){
 
 let a_o_function = [
     f_o_function(
+        'wtf', 
+        function() {
+            noise.seed(Math.random());
+                    
+            const n_tau = Math.PI * 2;
+            // all units in millimeter mm
+            let n_height = 200.;
+            let n_layer_height = 1;
+            let n_its_layer = parseInt(n_height / n_layer_height);
+            let a_o_geometry = []
+            let n_corners = 4.; // 4 polygon corners this should give a squircle
+            let n_its_circle = 500.;
+
+            let a_o_p_outside = [];
+            let n_radius_base = 100;
+            let n_circumfence = n_radius_base*2*(n_tau/2);
+            let n_dist_max = Math.sqrt(
+                Math.pow(n_height, 2) 
+                +Math.pow(n_radius_base,2)
+            )
+            let f_n_rad_curve = function(n_it_layer_nor){
+                return Math.sin((1.-n_it_layer_nor)*n_tau*0.8+n_tau*0.14)*20+n_radius_base;
+
+            }
+            // const phi = (1 + Math.sqrt(5)) / 2;
+            let a_o_p_random = new Array(444).fill(0).map((n)=>{
+                let n_rand = Math.random();
+                let n_it_layer_nor = Math.random();
+                let nrad = f_n_rad_curve(n_it_layer_nor)
+                return {
+                    n_x:Math.sin(n_rand*n_tau)*nrad, 
+                    n_y:Math.cos(n_rand*n_tau)*nrad,
+                    n_z: n_it_layer_nor*n_height
+                }
+            });
+            
+
+            function f_o_p_on_regular_polygon(nSides, radius, n_it_nor, n_rad_offset) {
+                // Calculate the angle between each vertex (in radians)
+                let t = n_it_nor;
+                t = Math.max(0, Math.min(1, t));
+                
+                // Total angle for full rotation
+                const totalAngle = 2 * Math.PI;
+                // Angle per side
+                const angleStep = totalAngle / nSides;
+                
+                // Calculate which edge we're on
+                const edgeLength = 1 / nSides;
+                const edgeIndex = Math.floor(t / edgeLength);
+                const edgeProgress = (t % edgeLength) / edgeLength;
+                
+                // Calculate angles for current and next vertex
+                const angle1 = edgeIndex * angleStep;
+                const angle2 = ((edgeIndex + 1) % nSides) * angleStep;
+                
+                // Get the two vertices
+                const x1 = radius * Math.cos(angle1+n_rad_offset);
+                const y1 = radius * Math.sin(angle1+n_rad_offset);
+                const x2 = radius * Math.cos(angle2+n_rad_offset);
+                const y2 = radius * Math.sin(angle2+n_rad_offset);
+                
+                // Linear interpolation between vertices
+                const x = x1 + edgeProgress * (x2 - x1);
+                const y = y1 + edgeProgress * (y2 - y1);
+                
+                return { n_x:x, n_y:y, n_z:0};
+        }
+
+            // Assuming you have your point generation functions as shown
+            function f_o_vec(x, y, z) {
+                return { n_x: x, n_y: y, n_z: z };
+            }
+            let f_n_len = function(o){
+                return Math.sqrt(
+                    Math.pow(o.n_x,2)
+                    + Math.pow(o.n_y,2)  
+                    + Math.pow(o.n_z,2)
+                )
+            }
+            function f_a_o_p(o_trn, n_radius,n_it_layer_nor,n_rad_offset) {
+                let n_2 = f_n_rad_curve(n_it_layer_nor);
+        
+                let a_o = new Array(n_its_circle).fill(0).map((v, n_idx) => {
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor_circle = n_it / n_its_circle;
+                    
+                    let o_p_now = {
+                        n_x: Math.sin(n_it_nor_circle*n_tau)*n_2, 
+                        n_y: Math.cos(n_it_nor_circle*n_tau)*n_2, 
+                        n_z: o_trn.n_z
+                    }
+                    
+                    let n_dist = n_dist_max;
+
+                    for(let o of a_o_p_random){
+                        let n_d = f_n_len(
+                            f_o_vec(
+                                o_p_now.n_x - o.n_x,
+                                o_p_now.n_y - o.n_y,
+                                o_p_now.n_z - o.n_z,
+                            )
+                        );
+                        n_d = 1.-(n_dist_max-n_d)
+                        if(n_d < n_dist){
+                            n_dist = n_d
+                        }
+                    };
+                    n_dist += Math.sin(n_dist*.3*n_tau)*0.9;
+                    let na = n_dist//*.5+n_noise_layer;
+                    na += n_2;
+                    // console.log(n_dist)
+                    
+                    let o_p = f_o_vec(
+                        Math.sin(n_it_nor_circle*n_tau)*na,
+                        Math.cos(n_it_nor_circle*n_tau)*na,
+                        0
+                    )
+
+                    return f_o_vec(
+                        o_trn.n_x + o_p.n_x,
+                        o_trn.n_y + o_p.n_y,
+                        o_trn.n_z + o_p.n_z,
+                    )
+                    
+        
+                }).flat();
+                return a_o
+            }
+        
+
+        
+        
+            for (let n_it_layer = 0.; n_it_layer < n_its_layer; n_it_layer += 1) {
+                let n_it_layer_nor = n_it_layer / n_its_layer;
+                let n_z = n_it_layer * n_layer_height;
+        
+                let n_rad_offset = n_it_layer_nor*n_tau/n_corners;
+                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z), 0, n_it_layer_nor,n_rad_offset);
+                a_o_p_outside.push(...a_o_p);
+                if (n_it_layer == 0 || n_it_layer == n_its_layer - 1) {
+                    // only bottom and top face
+                    a_o_geometry.push(
+                        f_o_geometry_from_a_o_p_polygon_face([f_o_vec(0, 0, n_z), ...a_o_p])
+                    )
+                }
+            }
+        
+            a_o_geometry.push(
+                // the outside / 'skirt' of the extruded polygon
+                f_o_geometry_from_a_o_p_polygon_vertex(a_o_p_outside, n_its_circle)
+            )
+            let a_o_mesh = a_o_geometry.map(o => { return f_o_shaded_mesh(o) })
+        
+            return a_o_mesh
+        }
+    ),
+    f_o_function(
+        'noise_sum',
+        function() {
+            noise.seed(Math.random());
+                    
+            const n_tau = Math.PI * 2;
+            // all units in millimeter mm
+            let n_height = 150.;
+            let n_layer_height = .5;
+            let n_its_layer = parseInt(n_height / n_layer_height);
+            let a_o_geometry = []
+            let n_corners = 4.; // 4 polygon corners this should give a squircle
+            let n_its_circle = 1000.;
+
+            let a_o_p_outside = [];
+            let n_radius_base = 20;
+            let n_circumfence = n_radius_base*2*(n_tau/2);
+            let n_dist_max = Math.sqrt(
+                Math.pow(n_height, 2) 
+                +Math.pow(n_radius_base,2)
+            )
+            // const phi = (1 + Math.sqrt(5)) / 2;
+            let a_o_p_random = new Array(20).fill(0).map((n)=>{
+                let n_rand = Math.random();
+                return {
+                    n_x:Math.sin(n_rand*n_tau)*n_radius_base, 
+                    n_y:Math.cos(n_rand*n_tau)*n_radius_base, 
+                    n_z: Math.random()*n_height
+                }
+            });
+            
+
+            function f_o_p_on_regular_polygon(nSides, radius, n_it_nor, n_rad_offset) {
+                // Calculate the angle between each vertex (in radians)
+                let t = n_it_nor;
+                t = Math.max(0, Math.min(1, t));
+                
+                // Total angle for full rotation
+                const totalAngle = 2 * Math.PI;
+                // Angle per side
+                const angleStep = totalAngle / nSides;
+                
+                // Calculate which edge we're on
+                const edgeLength = 1 / nSides;
+                const edgeIndex = Math.floor(t / edgeLength);
+                const edgeProgress = (t % edgeLength) / edgeLength;
+                
+                // Calculate angles for current and next vertex
+                const angle1 = edgeIndex * angleStep;
+                const angle2 = ((edgeIndex + 1) % nSides) * angleStep;
+                
+                // Get the two vertices
+                const x1 = radius * Math.cos(angle1+n_rad_offset);
+                const y1 = radius * Math.sin(angle1+n_rad_offset);
+                const x2 = radius * Math.cos(angle2+n_rad_offset);
+                const y2 = radius * Math.sin(angle2+n_rad_offset);
+                
+                // Linear interpolation between vertices
+                const x = x1 + edgeProgress * (x2 - x1);
+                const y = y1 + edgeProgress * (y2 - y1);
+                
+                return { n_x:x, n_y:y, n_z:0};
+        }
+
+            // Assuming you have your point generation functions as shown
+            function f_o_vec(x, y, z) {
+                return { n_x: x, n_y: y, n_z: z };
+            }
+            let f_n_len = function(o){
+                return Math.sqrt(
+                    Math.pow(o.n_x,2)
+                    + Math.pow(o.n_y,2)  
+                    + Math.pow(o.n_z,2)
+                )
+            }
+            function f_a_o_p(o_trn, n_radius,n_it_layer_nor,n_rad_offset) {
+        
+                let a_o = new Array(n_its_circle).fill(0).map((v, n_idx) => {
+                    let n_it = parseFloat(n_idx);
+                    let n_it_nor_circle = n_it / n_its_circle;
+                    
+                    let n_radians = Math.sin(n_it_nor_circle*3.*n_tau);
+                    let n_x1 = Math.sin(n_radians*n_tau)
+                    let n_y2 = Math.cos(n_radians*n_tau)
+                    let n_x = Math.sin(n_it_nor_circle*n_tau)
+                    let n_y = Math.cos(n_it_nor_circle*n_tau)
+
+                    let n_dist = n_dist_max;
+
+                    let n_noise_layer = 0;
+                    let n_itsn = 100;
+                    for(let n= 1; n <= n_itsn; n+=1){
+                        n_noise_layer+=
+                            noise.simplex2(
+                            (n_x1*n+n_it_layer_nor*20),
+                            (n_y2*n+n_it_layer_nor*20),
+                        )*(1./n);
+                    }
+                    let na = n_radius+n_noise_layer*.2;
+                    na += Math.sin(n_it_layer_nor*n_tau*0.95)*9
+                    // console.log(n_dist)
+                    
+                    let o_p = f_o_vec(
+                        Math.sin(n_it_nor_circle*n_tau)*na,
+                        Math.cos(n_it_nor_circle*n_tau)*na,
+                        0
+                    )
+
+                    return f_o_vec(
+                        o_trn.n_x + o_p.n_x,
+                        o_trn.n_y + o_p.n_y,
+                        o_trn.n_z + o_p.n_z,
+                    )
+                    
+        
+                }).flat();
+                return a_o
+            }
+        
+
+        
+        
+            for (let n_it_layer = 0.; n_it_layer < n_its_layer; n_it_layer += 1) {
+                let n_it_layer_nor = n_it_layer / n_its_layer;
+                let n_z = n_it_layer * n_layer_height;
+                let n_radius = n_radius_base//+Math.sin(n_it_layer_nor*n_tau)*n_radius_base*0.6;
+                //n_radius += Math.sin(n_it_layer_nor*n_tau*0.8)*n_radius_base/2;
+        
+                let n_rad_offset = n_it_layer_nor*n_tau/n_corners;
+                let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z), n_radius, n_it_layer_nor,n_rad_offset);
+                a_o_p_outside.push(...a_o_p);
+                if (n_it_layer == 0 || n_it_layer == n_its_layer - 1) {
+                    // only bottom and top face
+                    a_o_geometry.push(
+                        f_o_geometry_from_a_o_p_polygon_face([f_o_vec(0, 0, n_z), ...a_o_p])
+                    )
+                }
+            }
+        
+            a_o_geometry.push(
+                // the outside / 'skirt' of the extruded polygon
+                f_o_geometry_from_a_o_p_polygon_vertex(a_o_p_outside, n_its_circle)
+            )
+            let a_o_mesh = a_o_geometry.map(o => { return f_o_shaded_mesh(o) })
+        
+            return a_o_mesh
+        }
+    ),
+    f_o_function(
         'vase_voronoi',
         function() {
-
+            noise.seed(Math.random());
+                    
             const n_tau = Math.PI * 2;
             // all units in millimeter mm
             let n_height = 100.;
@@ -275,22 +590,21 @@ let a_o_function = [
             let a_o_geometry = []
             let n_corners = 4.; // 4 polygon corners this should give a squircle
             let n_its_circle = 500.;
+
             let a_o_p_outside = [];
-            let n_radius_base = n_height*0.2;
+            let n_radius_base = 20;
             let n_circumfence = n_radius_base*2*(n_tau/2);
             let n_dist_max = Math.sqrt(
                 Math.pow(n_height, 2) 
-                +Math.pow(n_radius*2)
+                +Math.pow(n_radius_base,2)
             )
             // const phi = (1 + Math.sqrt(5)) / 2;
-            
             let a_o_p_random = new Array(20).fill(0).map((n)=>{
-                let n_x = Math.random()*n_circumfence;
-                let n_y = Math.random()*n_height;
+                let n_rand = Math.random();
                 return {
-                    n_x, 
-                    n_y, 
-                    n_z: 0
+                    n_x:Math.sin(n_rand*n_tau)*n_radius_base, 
+                    n_y:Math.cos(n_rand*n_tau)*n_radius_base, 
+                    n_z: Math.random()*n_height
                 }
             });
             
@@ -345,28 +659,42 @@ let a_o_function = [
                     let n_it_nor_circle = n_it / n_its_circle;
                     
                     let o_p_now = {
-                        n_x: n_it_nor*n_circumfence, 
-                        n_y: n_it_layer_nor*n_height, 
-                        n_z: 0
+                        n_x: Math.sin(n_it_nor_circle*n_tau)*n_radius, 
+                        n_y: Math.cos(n_it_nor_circle*n_tau)*n_radius, 
+                        n_z: o_trn.n_z
                     }
                     
                     let n_dist = n_dist_max;
+
                     for(let o of a_o_p_random){
                         let n_d = f_n_len(
-                            o_p_now.n_x - o.n_x,
-                            o_p_now.n_y - o.n_y,
-                            o_p_now.n_z - o.n_z,
+                            f_o_vec(
+                                o_p_now.n_x - o.n_x,
+                                o_p_now.n_y - o.n_y,
+                                o_p_now.n_z - o.n_z,
+                            )
                         );
+                        n_d = 1.-(n_dist_max-n_d)
                         if(n_d < n_dist){
                             n_dist = n_d
                         }
                     };
-                    let na = n_radius+n_d;
+
+                    let n_noise_layer = noise.simplex2(
+                        (o_p_now.n_x+n_it_layer_nor)*.2,
+                        (o_p_now.n_z+n_it_layer_nor)*.2
+                    );
+
+                    let na = n_radius+n_dist*.5+n_noise_layer;
+                    na += Math.sin(n_it_layer_nor*n_tau*0.95)*9
+                    // console.log(n_dist)
+                    
                     let o_p = f_o_vec(
                         Math.sin(n_it_nor_circle*n_tau)*na,
-                        Math.sin(n_it_nor_circle*n_tau)*na,
+                        Math.cos(n_it_nor_circle*n_tau)*na,
                         0
                     )
+
                     return f_o_vec(
                         o_trn.n_x + o_p.n_x,
                         o_trn.n_y + o_p.n_y,
@@ -385,7 +713,7 @@ let a_o_function = [
                 let n_it_layer_nor = n_it_layer / n_its_layer;
                 let n_z = n_it_layer * n_layer_height;
                 let n_radius = n_radius_base//+Math.sin(n_it_layer_nor*n_tau)*n_radius_base*0.6;
-                n_radius += Math.sin(n_it_layer_nor*n_tau*0.8)*n_radius_base/2;
+                //n_radius += Math.sin(n_it_layer_nor*n_tau*0.8)*n_radius_base/2;
         
                 let n_rad_offset = n_it_layer_nor*n_tau/n_corners;
                 let a_o_p = f_a_o_p(f_o_vec(0, 0, n_z), n_radius, n_it_layer_nor,n_rad_offset);
@@ -3586,67 +3914,48 @@ let f_update_rendering = function(){
     let s = o_monaco_editor.getValue();
     let s_f = `(${s})()`;
     // console.log(s_f) 
+    let o = document.querySelector(`#${s_id_error_msg}`);
+    if(o){
+        o.remove();
+    }
     try {
         
         let a_o = eval(s_f);
         createThreeJSObjects(a_o);
     } catch (error) {
         console.error('Evaluation error:', error);
-        
+
         if (error.stack) {
-            const stackMatch = error.stack.match(/<anonymous>:(\d+):(\d+)/);
+
+            // Basic error message
+            let errorMessage = `Error: ${error.message}`;
+            
+            // Try to extract line number
+            const stackMatch = error.stack?.match(/<anonymous>:(\d+):(\d+)/);
             if (stackMatch) {
-                const errorLine = parseInt(stackMatch[1]);
-                const errorColumn = parseInt(stackMatch[2]);
+                const [_, line, column] = stackMatch.map(Number);
+                errorMessage += `\n\nAt line ${line}, column ${column}`;
                 
-                // Clear previous decorations if they exist
-                if (window.errorDecorations) {
-                    window.errorDecorations.clear();
+                // Get the problematic line of code
+                const lines = o_monaco_editor.getValue().split('\n');
+                if (lines[line - 1]) {
+                    errorMessage += `\n\nProblematic code:\n${lines[line - 1]}`;
                 }
-                
-                // Create new decorations
-                window.errorDecorations = o_monaco_editor.createDecorationsCollection([
-                    {
-                        range: new monaco.Range(
-                            errorLine,
-                            1,
-                            errorLine,
-                            o_monaco_editor.getModel().getLineMaxColumn(errorLine)
-                        ),
-                        options: {
-                            isWholeLine: true,
-                            className: 'errorLineHighlight',
-                            glyphMarginClassName: 'errorGlyphMargin',
-                            hoverMessage: { value: error.message }
-                        }
-                    },
-                    {
-                        range: new monaco.Range(
-                            errorLine,
-                            errorColumn,
-                            errorLine,
-                            errorColumn + 1
-                        ),
-                        options: {
-                            inlineClassName: 'errorInlineHighlight',
-                            hoverMessage: { value: error.message }
-                        }
-                    }
-                ]);
-                
-                // Focus editor on error location
-                o_monaco_editor.setPosition({
-                    lineNumber: errorLine,
-                    column: errorColumn
-                });
-                o_monaco_editor.revealPositionInCenter({
-                    lineNumber: errorLine,
-                    column: errorColumn
-                });
-                
-                console.error(`Error at line ${errorLine}, column ${errorColumn}: ${error.message}`);
             }
+            
+            // Show error to user - choose one method:
+            
+            // Option 1: Simple alert
+            // alert(errorMessage);
+            let o = document.createElement('div');
+            o.innerText = errorMessage;
+            o.id = s_id_error_msg;
+
+
+            document.querySelector('#editor').appendChild(o)
+            
         }
+        
 
     }
     // let o_mesh = mergeMeshesWithVertexMerge(a_o,0.5);
