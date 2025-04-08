@@ -1,4 +1,3 @@
-const apiToken = "70b6067844094535935a13f58422b87d"; // Replace with your token
 const modelPath = "./vase_honey_pot3.stl";
 
 // 1. Prepare metadata (matches browser payload)
