@@ -3944,14 +3944,19 @@ let a_o_function = [
     )
 ]
 let o_div = document;
+let o_blob_stl = null;
 let o_state = f_o_proxified_and_add_listeners(
     {
+        b_show_sketchfab_upload_inputs: false,
         n_id_timeout_renderrefresh: 0, 
         n_ms_timeout_renderrefresh: 333,
         n_ts_ov_changed: false, 
         ov: {},
         b_add_circle_caps: true,
-        s_name: "asdf",// ugly work around
+        s_name: "Vase - Really simple",
+        s_description: 'A 3D-printable vase with mathematical influences.',// ugly work around
+        s_tags: 'vase, vasemode , 3dprint',
+        s_api_token: '',
         o_function: null,
         a_o_function: a_o_function
     }, 
@@ -3999,9 +4004,104 @@ let o = await f_o_html_from_o_js(
                                             f_a_o: ()=>[
                                                 {
                                                     s_tag: "button", 
+                                                    innerText: "upload to sketchfab", 
+                                                    onclick: ()=>{
+                                                        o_state.b_show_sketchfab_upload_inputs = !o_state.b_show_sketchfab_upload_inputs;
+                                                    }, 
+                                                    a_s_prop_sync: 'b_show_sketchfab_upload_inputs',
+                                                },
+                                                {
+                                                    f_b_render:()=> o_state.b_show_sketchfab_upload_inputs, 
+                                                    a_s_prop_sync: 'b_show_sketchfab_upload_inputs',
+                                                    f_a_o: ()=>{
+                                                        return [
+                                                            {
+                                                                s_tag: 'label', 
+                                                                innerText: "Name"
+                                                            },
+                                                            {
+                                                                s_tag: 'input', 
+                                                                a_s_prop_sync: 's_name',
+                                                            },
+                                                            {
+                                                                s_tag: 'label', 
+                                                                innerText: "Description"
+                                                            },
+                                                            {
+                                                                s_tag: 'input', 
+                                                                a_s_prop_sync: 's_description',
+                                                            },
+                                                            {
+                                                                s_tag: 'label', 
+                                                                innerText: "Tags"
+                                                            },
+                                                            {
+                                                                s_tag: 'input', 
+                                                                a_s_prop_sync: 's_tags',
+                                                            },
+                                                            {
+                                                                s_tag: 'label', 
+                                                                innerText: "API Token"
+                                                            },
+                                                            {
+                                                                s_tag: 'input', 
+                                                                a_s_prop_sync: 's_api_token',
+                                                            },
+                                                            {
+                                                                s_tag: 'button', 
+                                                                innerText: "UPLOAD!", 
+                                                                onclick: async ()=>{
+
+                                                                    // 1. Prepare metadata (matches browser payload)
+                                                                    const payload = {
+                                                                        name: o_state.s_name,
+                                                                        description: o_state.s_description,
+                                                                        tags:o_state.s_tags.split(',').map(s=>s.trim()),
+                                                                        categories: ["e56c5de1e9344241909de76c5886f551"], // UUID for "Art" category
+                                                                        license: "322a749bcfa841b29dff1e8a1bb74b0b",     // UUID for CC Attribution
+                                                                        isPublished: true,
+                                                                        isDownloadable: true,
+                                                                        visibility: "public",
+                                                                        downloadType: "free",
+                                                                    };
+
+                                                                    // 2. Read file and create FormData
+                                                                    // const fileContent = await Deno.readFile(modelPath);
+                                                                    // formData.append("modelFile", new Blob([fileContent]), "vase_honey_pot.stl");
+                                                                    const formData = new FormData();
+                                                                    f_generate_stl();
+                                                                    formData.append("modelFile", o_blob_stl, `${o_state.s_name.split(' ').join('_')}.stl` );
+
+                                                                    // 3. Append metadata as JSON (Sketchfab expects multipart + JSON)
+                                                                    formData.append("source", "api");
+                                                                    formData.append("data", JSON.stringify(payload));
+
+                                                                    // 4. Upload
+                                                                    const response = await fetch("https://api.sketchfab.com/v3/models", {
+                                                                        method: "POST",
+                                                                        headers: {
+                                                                            "Authorization": `Token ${o_state.s_api_token}`,
+                                                                        },
+                                                                        body: formData,
+                                                                    });
+
+                                                                    if (response.ok) {
+                                                                    const data = await response.json();
+                                                                        console.log("✅ Upload success! Model URL:", data.uri);
+                                                                    } else {
+                                                                        console.error("❌ Upload failed:", await response.text());
+                                                                    }
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                {
+                                                    s_tag: "button", 
                                                     innerText: "download", 
                                                     onclick: ()=>{
-                                                        f_export_stl();
+                                                        f_generate_stl();
+                                                        f_download_stl();
                                                     }
                                                 }, 
                                                 {
@@ -4146,7 +4246,7 @@ function f_o_mesh_torus(o_center, n_radius, n_thickness = 0.5, n_segments = 32, 
     return o_mesh;
 }
 
-function f_export_stl() {
+let f_generate_stl = function(){
     const o_exporter = new STLExporter();
     
     // Create a temporary group to hold all meshes
@@ -4164,15 +4264,20 @@ function f_export_stl() {
     const a_binary = o_exporter.parse(o_temp_group, { binary: true });
 
     // Download
-    const o_blob = new Blob([a_binary], { type: 'application/octet-stream' });
-    const o_el_a = document.createElement('a');
-    o_el_a.href = URL.createObjectURL(o_blob);
-    o_el_a.download = `${o_state.s_name}.stl`;
-    o_el_a.click();
-    
+    o_blob_stl = new Blob([a_binary], { type: 'application/octet-stream'});
+
     // Clean up
     o_temp_group.clear();
 }
+let f_download_stl = function(){
+
+    const o_el_a = document.createElement('a');
+    o_el_a.href = URL.createObjectURL(o_blob_stl);
+    o_el_a.download = `${o_state.s_name}.stl`;
+    o_el_a.click();
+    
+}
+
 
 function createThreeJSObjects(a_o_mesh) {
     // Clear only the world group, not the entire scene
