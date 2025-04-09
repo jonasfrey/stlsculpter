@@ -4070,7 +4070,7 @@ let o = await f_o_html_from_o_js(
                                                                     // formData.append("modelFile", new Blob([fileContent]), "vase_honey_pot.stl");
                                                                     const formData = new FormData();
                                                                     f_generate_stl();
-                                                                    formData.append("modelFile", o_blob_stl, `${o_state.s_name.split(' ').join('_')}.stl` );
+                                                                    formData.append("modelFile", o_blob_stl, `${o_state.s_name}.stl` );
 
                                                                     // 3. Append metadata as JSON (Sketchfab expects multipart + JSON)
                                                                     formData.append("source", "api");
@@ -4088,8 +4088,10 @@ let o = await f_o_html_from_o_js(
                                                                     if (response.ok) {
                                                                     const data = await response.json();
                                                                         console.log("✅ Upload success! Model URL:", data.uri);
+                                                                        alert(`✅ Upload success! Model URL:${data.uri}`)
                                                                     } else {
                                                                         console.error("❌ Upload failed:", await response.text());
+                                                                        alert(`❌ Upload failed:", await ${response.text()}`)
                                                                     }
                                                                 }
                                                             }
@@ -4247,6 +4249,7 @@ function f_o_mesh_torus(o_center, n_radius, n_thickness = 0.5, n_segments = 32, 
 }
 
 let f_generate_stl = function(){
+
     const o_exporter = new STLExporter();
     
     // Create a temporary group to hold all meshes
@@ -4268,6 +4271,7 @@ let f_generate_stl = function(){
 
     // Clean up
     o_temp_group.clear();
+
 }
 let f_download_stl = function(){
 
@@ -4487,6 +4491,16 @@ let f_a_o = function(){
 
 // Create a scene, camera, and renderer
 const o_scene = new THREE.Scene();
+
+// Add a grid helper to show the ground plane
+const gridHelper = new THREE.GridHelper(1000, 100, 0x555555, 0x333333);
+// Rotate the grid to be flat on XZ plane (default is XY)
+gridHelper.rotation.x = Math.PI / 2; // Rotate 90 degrees around X axis
+
+o_scene.add(gridHelper);
+
+
+
 globalThis.o_scene = o_scene
 o_scene.background = new THREE.Color(0x111111); // Dark background for contrast
 
