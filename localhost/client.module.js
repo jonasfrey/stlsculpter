@@ -4249,7 +4249,6 @@ function f_o_mesh_torus(o_center, n_radius, n_thickness = 0.5, n_segments = 32, 
 }
 
 let f_generate_stl = function(){
-
     const o_exporter = new STLExporter();
     
     // Create a temporary group to hold all meshes
@@ -4281,6 +4280,15 @@ let f_download_stl = function(){
     o_el_a.click();
     
 }
+let f_download_stl = function(){
+
+    const o_el_a = document.createElement('a');
+    o_el_a.href = URL.createObjectURL(o_blob_stl);
+    o_el_a.download = `${o_state.s_name}.stl`;
+    o_el_a.click();
+    
+}
+
 
 
 function createThreeJSObjects(a_o_mesh) {
