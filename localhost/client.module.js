@@ -8,8 +8,12 @@ import {
 
 import {
     f_o_html_from_o_js,
-    f_o_proxified_and_add_listeners
-} from "https://deno.land/x/handyhelpers@5.2.3/mod.js"
+    f_o_proxified_and_add_listeners,
+    f_o_js_a_o_toast,
+    f_o_toast,
+    o_state_a_o_toast,
+    s_css_a_o_toast
+} from "https://deno.land/x/handyhelpers@5.2.4/mod.js"
 
 import * as THREE from '/three.js-r126/build/three.module.js';
 import { OrbitControls } from '/three.js-r126/examples/jsm/controls/OrbitControls.js';
@@ -43,6 +47,7 @@ f_add_css(
         padding: 1rem;
         z-index: 111;
     }
+    ${s_css_a_o_toast}
     ${
         f_s_css_from_o_variables(
             o_variables
@@ -3945,8 +3950,11 @@ let a_o_function = [
 ]
 let o_div = document;
 let o_blob_stl = null;
+let a_o_license = await(await fetch('https://api.sketchfab.com/v3/licenses')).json()
+let a_o_category = await(await(fetch('https://api.sketchfab.com/v3/categories'))).json()
 let o_state = f_o_proxified_and_add_listeners(
     {
+        
         b_show_sketchfab_upload_inputs: false,
         n_id_timeout_renderrefresh: 0, 
         n_ms_timeout_renderrefresh: 333,
@@ -3955,10 +3963,13 @@ let o_state = f_o_proxified_and_add_listeners(
         b_add_circle_caps: true,
         s_name: "Vase - Really simple",
         s_description: 'A 3D-printable vase with mathematical influences.',// ugly work around
-        s_tags: 'vase, vasemode , 3dprint',
-        s_api_token: '',
+        a_s_tag: ['vase', 'vasemode', '3dprint'],
+        s_tag: '',
+        s_api_token_sketchfab: '',
+        s_api_token_deepseek: '',
         o_function: null,
-        a_o_function: a_o_function
+        a_o_function: a_o_function, 
+        ...o_state_a_o_toast,
     }, 
     f_callback_beforevaluechange,
     f_callback_aftervaluechange, 
@@ -3976,9 +3987,23 @@ let f_sleep_ms = async function(n_ms){
     })
 }
 
+let f_add_tag = function(){
+    if(o_state.s_tag != '' && !o_state.a_s_tag.find(s=>{return s == o_state.s_tag})){
+        o_state.a_s_tag.push(o_state.s_tag)
+        o_state.s_tag = ''
+    }
+}
 
+
+globalThis.f_o_toast = f_o_toast
 let o_el_svg = null;
-// then we build the html 
+// then we build the html
+f_o_toast('this is info', 'info', 5000)
+f_o_toast('this is warning','warning', 5000)
+f_o_toast('this is error','error', 5000)
+f_o_toast('this will take a while','loading', 5000)
+
+
 let o = await f_o_html_from_o_js(
     {
         class: "test",
@@ -4002,6 +4027,7 @@ let o = await f_o_html_from_o_js(
                                             class: "inputs", 
                                             style: "position: absolute;top:0",
                                             f_a_o: ()=>[
+                                                f_o_js_a_o_toast(o_state),
                                                 {
                                                     s_tag: "button", 
                                                     innerText: "upload to sketchfab", 
@@ -4028,70 +4054,219 @@ let o = await f_o_html_from_o_js(
                                                                 innerText: "Description"
                                                             },
                                                             {
-                                                                s_tag: 'input', 
+                                                                s_tag: 'textarea', 
                                                                 a_s_prop_sync: 's_description',
+                                                                rows: 5, 
+                                                                cols: 20,
+                                                            },
+                                                            {
+                                                                s_tag: "button",
+                                                                innerText: "generate description with AI (deepseek)", 
+                                                                onclick: ()=>{
+                                                                    const url = 'https://api.deepseek.com/chat/completions';  
+                                                                    const requestData = {
+                                                                      model: "deepseek-chat",
+                                                                      messages: [
+                                                                        {"role": "system", "content": "You are a helpful assistant."},
+                                                                        {"role": "user", "content": "Write a description for a 3D model of a vase. It will be uploaded to sketchfab. It is not printed and therefore not tested but should be printable with the 'vase-mode' in any 3d printing slicing software. I give you this timestamp so that you will generate an output that is not always the same. The timestamp is: "+Date.now()},
+                                                                      ],
+                                                                      stream: false
+                                                                    };
+                                                                    
+                                                                    fetch(url, {
+                                                                      method: 'POST',
+                                                                      headers: {
+                                                                        'Content-Type': 'application/json',
+                                                                        'Authorization': `Bearer ${o_state.s_api_token_deepseek}`
+                                                                      },
+                                                                      body: JSON.stringify(requestData)
+                                                                    })
+                                                                    .then(async response => {
+                                                                      if (!response.ok) {
+                                                                        throw new Error(`HTTP error! status: ${response.status}`);
+                                                                      }
+                                                                      let o = await response.json();
+                                                                      let s = o?.choices[0]?.message?.content;
+                                                                        if(s){
+                                                                            o_state.s_description = s;
+                                                                        }
+                                                                    //   let o_example_response = {
+                                                                    //     "id": "d5113375-ed6a-413e-90b6-ac17a6493142",
+                                                                    //     "object": "chat.completion",
+                                                                    //     "created": 1744360229,
+                                                                    //     "model": "deepseek-chat",
+                                                                    //     "choices": [
+                                                                    //         {
+                                                                    //             "index": 0,
+                                                                    //             "message": {
+                                                                    //                 "role": "assistant",
+                                                                    //                 "content": "Hello! 😊 How can I assist you today?"
+                                                                    //             },
+                                                                    //             "logprobs": null,
+                                                                    //             "finish_reason": "stop"
+                                                                    //         }
+                                                                    //     ],
+                                                                    //     "usage": {
+                                                                    //         "prompt_tokens": 11,
+                                                                    //         "completion_tokens": 11,
+                                                                    //         "total_tokens": 22,
+                                                                    //         "prompt_tokens_details": {
+                                                                    //             "cached_tokens": 0
+                                                                    //         },
+                                                                    //         "prompt_cache_hit_tokens": 0,
+                                                                    //         "prompt_cache_miss_tokens": 11
+                                                                    //     },
+                                                                    //     "system_fingerprint": "fp_3d5141a69a_prod0225"
+                                                                    //     }
+                                                                    })
+                                                                    .then(data => {
+                                                                      console.log('Response:', data);
+                                                                      // Handle the response data here
+                                                                    })
+                                                                    .catch(error => {
+                                                                      console.error('Error:', error);
+                                                                      // Handle errors here
+                                                                    });
+                                                                }
                                                             },
                                                             {
                                                                 s_tag: 'label', 
                                                                 innerText: "Tags"
                                                             },
                                                             {
+                                                                a_s_prop_sync: 'a_s_tag',
+                                                                f_a_o: ()=>{
+                                                                    return o_state.a_s_tag.map(s=>{
+                                                                        return {
+                                                                            s_tag: 'input', 
+                                                                            readonly: 'true', 
+                                                                            value:`${s} x`, 
+                                                                            onclick: ()=>{
+                                                                                o_state.a_s_tag 
+                                                                                    = o_state.a_s_tag.filter(
+                                                                                        s2=>{return s2 != s}
+                                                                                    )
+                                                                            }
+                                                                        }
+                                                                    })
+                                                                }
+                                                            },
+                                                            {
                                                                 s_tag: 'input', 
-                                                                a_s_prop_sync: 's_tags',
+                                                                a_s_prop_sync: 's_tag',  
+                                                                onkeydown: (o_e)=>{
+                                                                    if(o_e.key == 'Enter'){
+                                                                        f_add_tag();
+                                                                    }
+                                                                }
+                                                            },
+                                                            {
+                                                                s_tag: "button", 
+                                                                innerText: "add tag",
+                                                                onclick: ()=>{
+                                                                    f_add_tag();
+                                                                }
                                                             },
                                                             {
                                                                 s_tag: 'label', 
-                                                                innerText: "API Token"
+                                                                innerText: "API Token (sketchfab)"
                                                             },
                                                             {
                                                                 s_tag: 'input', 
-                                                                a_s_prop_sync: 's_api_token',
+                                                                a_s_prop_sync: 's_api_token_sketchfab',
+                                                            },
+                                                            {
+                                                                s_tag: 'label', 
+                                                                innerText: "API Token (Deepseek)"
+                                                            },
+                                                            {
+                                                                s_tag: 'input', 
+                                                                a_s_prop_sync: 's_api_token_deepseek',
                                                             },
                                                             {
                                                                 s_tag: 'button', 
                                                                 innerText: "UPLOAD!", 
                                                                 onclick: async ()=>{
 
+                                                                    let o_license =     {
+                                                                        "uri": "https://api.sketchfab.com/v3/licenses/b9ddc40b93e34cdca1fc152f39b9f375",
+                                                                        "label": "CC Attribution-ShareAlike",
+                                                                        "fullName": "Creative Commons Attribution-ShareAlike",
+                                                                        "requirements": "Author must be credited. Modified versions must have the same license. Commercial use is allowed.",
+                                                                        "url": "http://creativecommons.org/licenses/by-sa/4.0/",
+                                                                        "slug": "by-sa"
+                                                                      };
+                                                                      let o_category =  {
+                                                                        "uid": "e56c5de1e9344241909de76c5886f551",
+                                                                        "name": "Art & Abstract",
+                                                                        "slug": "art-abstract",
+                                                                        "uri": "https://api.sketchfab.com/v3/categories/e56c5de1e9344241909de76c5886f551",
+                                                                        "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/876106eddb2a54aa1391eb2f4db0acb2-v2.svg",
+                                                                        "thumbnails": [
+                                                                          {
+                                                                            "width": "512",
+                                                                            "height": "288",
+                                                                            "url": "https://static.sketchfab.com/categories/e56c5de1e9344241909de76c5886f551/512x288.png"
+                                                                          },
+                                                                          {
+                                                                            "width": "800",
+                                                                            "height": "450",
+                                                                            "url": "https://static.sketchfab.com/categories/e56c5de1e9344241909de76c5886f551/800x450.png"
+                                                                          }
+                                                                        ]
+                                                                      }
+
                                                                     // 1. Prepare metadata (matches browser payload)
                                                                     const payload = {
                                                                         name: o_state.s_name,
                                                                         description: o_state.s_description,
-                                                                        tags:o_state.s_tags.split(',').map(s=>s.trim()),
-                                                                        categories: ["e56c5de1e9344241909de76c5886f551"], // UUID for "Art" category
-                                                                        license: "322a749bcfa841b29dff1e8a1bb74b0b",     // UUID for CC Attribution
-                                                                        isPublished: true,
-                                                                        isDownloadable: true,
+                                                                        tags:o_state.s_tags.split(','),
+                                                                        categories: [o_category.slug], // UUID for "Art" category
                                                                         visibility: "public",
-                                                                        downloadType: "free",
+                                                                        private: false, // false = downloadable
+                                                                        isInspectable: true,
+                                                                        license: o_license.slug,
+                                                                        isPublished: true,
                                                                     };
 
-                                                                    // 2. Read file and create FormData
-                                                                    // const fileContent = await Deno.readFile(modelPath);
-                                                                    // formData.append("modelFile", new Blob([fileContent]), "vase_honey_pot.stl");
-                                                                    const formData = new FormData();
                                                                     f_generate_stl();
-                                                                    formData.append("modelFile", o_blob_stl, `${o_state.s_name}.stl` );
 
-                                                                    // 3. Append metadata as JSON (Sketchfab expects multipart + JSON)
-                                                                    formData.append("source", "api");
-                                                                    formData.append("data", JSON.stringify(payload));
+                                                                      // Create a FormData object
+                                                                    const formDataObj = new FormData();
 
+                                                                    // Append all the simple fields
+                                                                    for (const key in payload) {
+                                                                        if (Array.isArray(payload[key])) {
+                                                                        // For array fields (tags, categories), add each item on a new line
+                                                                        formDataObj.append(key, payload[key].join('\n'));
+                                                                        } else {
+                                                                        formDataObj.append(key, payload[key]);
+                                                                        }
+                                                                    }
+
+                                                                    formDataObj.append("modelFile", o_blob_stl, `${o_state.s_name}.stl` );
+  
+                                                                    
                                                                     // 4. Upload
+                                                                    let o_toast = f_o_toast('uploading model, please wait','loading', 50000)
+                                                                    
                                                                     const response = await fetch("https://api.sketchfab.com/v3/models", {
                                                                         method: "POST",
                                                                         headers: {
-                                                                            "Authorization": `Token ${o_state.s_api_token}`,
+                                                                            "Authorization": `Token ${o_state.s_api_token_sketchfab}`,
                                                                         },
-                                                                        body: formData,
+                                                                        body: formDataObj,
                                                                     });
 
                                                                     if (response.ok) {
                                                                     const data = await response.json();
                                                                         console.log("✅ Upload success! Model URL:", data.uri);
                                                                         alert(`✅ Upload success! Model URL:${data.uri}`)
+                                                                        o_toast.f_hide();
                                                                     } else {
                                                                         console.error("❌ Upload failed:", await response.text());
                                                                         alert(`❌ Upload failed:", await ${response.text()}`)
+                                                                        o_toast.f_hide();
                                                                     }
                                                                 }
                                                             }
@@ -4509,6 +4684,7 @@ o_scene.add(o_world_group);
 
 const o_camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000); // Aspect ratio 1 for square canvas
 globalThis.o_camera = o_camera
+
 
 o_camera.position.set(3.6577695813301743, -431.2580386693436,  237.3374585409182)
 
