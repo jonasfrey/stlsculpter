@@ -4280,14 +4280,6 @@ let f_download_stl = function(){
     o_el_a.click();
     
 }
-let f_download_stl = function(){
-
-    const o_el_a = document.createElement('a');
-    o_el_a.href = URL.createObjectURL(o_blob_stl);
-    o_el_a.download = `${o_state.s_name}.stl`;
-    o_el_a.click();
-    
-}
 
 
 

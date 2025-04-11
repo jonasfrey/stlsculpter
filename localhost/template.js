@@ -8,9 +8,9 @@ let o = f_o_function(
         let n_layer_height = 1;
         let n_its_layer = parseInt(n_height / n_layer_height);
         let a_o_geometry = []
-        let n_corners = 40.;
+        let n_corners = 5.;
         let a_o_p_outside = [];
-        let n_radius_base = n_height/1.618;
+        let n_radius_base = n_height*0.3;
         // const phi = (1 + Math.sqrt(5)) / 2;
 
         // Assuming you have your point generation functions as shown
@@ -26,7 +26,10 @@ let o = f_o_function(
                 let n_it = parseFloat(n_idx);
                 let n_it_nor_corner = n_it / n_corners;
                 let n_amp = n_radius_base;
-                let n_rad_offset = 0;
+
+                n_amp += Math.sin(n_tau * n_it_nor_corner) * n_radius_base / 2;// this will make the vase bulge outwards for example
+                let n_rad_offset = n_tau*(1./n_corners);//this will for example twist the vase by 1./5. 
+
                 let o_trn1 = f_o_vec( //this would be the point that is on the corner of the polygon
                     Math.sin(n_it_nor_corner * n_tau + n_rad_offset) * n_amp,
                     Math.cos(n_it_nor_corner * n_tau + n_rad_offset) * n_amp,
