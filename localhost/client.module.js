@@ -173,7 +173,7 @@ let f_o_function = function(
         s_function : f_function.toString()
     }
 }
-let f_o_shaded_mesh = function(
+let f_o_shaded_mesh_old = function(
     o_geometry,
     n_color = 0x6bb9f2,
     n_edge_color = 0x000000,
@@ -211,6 +211,55 @@ let f_o_shaded_mesh = function(
     o_group.add(o_shaded_mesh);
     // o_group.add(o_edge_lines);
     
+    return o_group;
+};
+let f_o_shaded_mesh = function(
+    o_geometry,
+    n_color = 0xCBC3E3ff,         // Main mesh color
+    n_edge_color = 0x000000,     // Wireframe/edge color
+    n_edge_width = 0.0002,
+    b_show_wireframe = true,     // Toggle wireframe
+    b_show_vertices = false,     // Toggle vertices
+    n_vertex_size = 0.01,        // Vertex sphere size
+    n_vertex_color = 0xff0000    // Vertex color
+) {
+    // 1. Main shaded material (Phong for lighting)
+    const o_shaded_material = new THREE.MeshPhongMaterial({
+        color: n_color,
+        side: THREE.DoubleSide,
+    });
+
+    // 2. Create the mesh
+    const o_shaded_mesh = new THREE.Mesh(o_geometry, o_shaded_material);
+
+    // 3. Group to hold everything
+    const o_group = new THREE.Group();
+    o_group.add(o_shaded_mesh);
+
+    // 4. Add wireframe (using EdgesGeometry + LineSegments)
+    if (b_show_wireframe) {
+        const o_edges = new THREE.EdgesGeometry(o_geometry);
+        const o_line_material = new THREE.LineBasicMaterial({ 
+            color: n_edge_color, 
+            linewidth: 1,       // Note: linewidth may not work in all browsers
+        });
+        const o_wireframe = new THREE.LineSegments(o_edges, o_line_material);
+        o_group.add(o_wireframe);
+    }
+
+    // 5. Add vertices (if enabled)
+    if (b_show_vertices) {
+        const a_vertices = o_geometry.attributes.position.array;
+        const o_vertex_geometry = new THREE.SphereGeometry(n_vertex_size, 8, 8);
+        const o_vertex_material = new THREE.MeshBasicMaterial({ color: n_vertex_color });
+
+        for (let i = 0; i < a_vertices.length; i += 3) {
+            const o_sphere = new THREE.Mesh(o_vertex_geometry, o_vertex_material);
+            o_sphere.position.set(a_vertices[i], a_vertices[i+1], a_vertices[i+2]);
+            o_group.add(o_sphere);
+        }
+    }
+
     return o_group;
 };
 let f_o_geometry_from_a_o_p_polygon_vertex = function(a_o_p, n_its_corner){
@@ -4220,7 +4269,7 @@ let o = await f_o_html_from_o_js(
                                                                     const payload = {
                                                                         name: o_state.s_name,
                                                                         description: o_state.s_description,
-                                                                        tags:o_state.s_tags.split(','),
+                                                                        tags:o_state.a_s_tag,
                                                                         categories: [o_category.slug], // UUID for "Art" category
                                                                         visibility: "public",
                                                                         private: false, // false = downloadable
@@ -4261,11 +4310,11 @@ let o = await f_o_html_from_o_js(
                                                                     if (response.ok) {
                                                                     const data = await response.json();
                                                                         console.log("✅ Upload success! Model URL:", data.uri);
-                                                                        alert(`✅ Upload success! Model URL:${data.uri}`)
+                                                                        f_o_toast(`✅ Upload success! Model URL:${data.uri}`,'success')
                                                                         o_toast.f_hide();
                                                                     } else {
                                                                         console.error("❌ Upload failed:", await response.text());
-                                                                        alert(`❌ Upload failed:", await ${response.text()}`)
+                                                                        f_o_toast(`❌ Upload failed:", await ${response.text()}`, 'error')
                                                                         o_toast.f_hide();
                                                                     }
                                                                 }
