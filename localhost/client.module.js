@@ -26,6 +26,7 @@ import { Line2 } from '/three.js-r126/examples/jsm/lines/Line2.js';
 import { LineMaterial } from '/three.js-r126/examples/jsm/lines/LineMaterial.js';
 import { LineGeometry } from '/three.js-r126/examples/jsm/lines/LineGeometry.js';
 
+// import { Boolean } from '/three.js-r126/examples/jsm/math/BooleanOperation.js';
 // import { STLExporter } from '/three/STLExporter.js';
 // if you need more addons/examples download from here...
 //  
@@ -177,7 +178,8 @@ let f_o_shaded_mesh_old = function(
     o_geometry,
     n_color = 0x6bb9f2,
     n_edge_color = 0x000000,
-    n_edge_width = 0.0002
+    n_edge_width = 0.0002, 
+
 ){
     // 1. Create the shaded material (Phong for nice lighting)
     const o_shaded_material = new THREE.MeshPhongMaterial({
@@ -215,6 +217,7 @@ let f_o_shaded_mesh_old = function(
 };
 let f_o_shaded_mesh = function(
     o_geometry,
+    o_material_options = {},
     n_color = 0xCBC3E3ff,         // Main mesh color
     n_edge_color = 0x000000,     // Wireframe/edge color
     n_edge_width = 0.0002,
@@ -227,6 +230,7 @@ let f_o_shaded_mesh = function(
     const o_shaded_material = new THREE.MeshPhongMaterial({
         color: n_color,
         side: THREE.DoubleSide,
+        ...o_material_options
     });
 
     // 2. Create the mesh
@@ -4739,6 +4743,7 @@ o_camera.position.set(3.6577695813301743, -431.2580386693436,  237.3374585409182
 
 const o_renderer = new THREE.WebGLRenderer({ antialias: true });
 // o_renderer.setSize(500, 500);
+window.o_renderer = o_renderer
 document.querySelector('#canvas')?.appendChild(o_renderer.domElement);
 let f_resize_renderer = function(){
     let o_bounds = o_renderer.domElement.parentElement.getBoundingClientRect();
