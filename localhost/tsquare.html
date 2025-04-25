@@ -1,0 +1,85 @@
+<script>
+function getTSquareFractalOutline(iterations = 3, size = 100, center = { x: 0, y: 0 }) {
+    // Initialize with the outer square (iteration 0)
+    const halfSize = size / 2;
+    let outerSquare = [
+        { x: center.x - halfSize, y: center.y - halfSize }, // Top-left
+        { x: center.x + halfSize, y: center.y - halfSize }, // Top-right
+        { x: center.x + halfSize, y: center.y + halfSize }, // Bottom-right
+        { x: center.x - halfSize, y: center.y + halfSize }, // Bottom-left
+        { x: center.x - halfSize, y: center.y - halfSize }  // Close square
+    ];
+
+    // Recursively remove inner squares and track the outer perimeter
+    function subdivide(points, depth, currentSize) {
+        if (depth === 0) return points;
+
+        const newSize = currentSize / 3;
+        const newPoints = [];
+        const innerSize = newSize;
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const p1 = points[i];
+            const p2 = points[i + 1];
+
+            // Split each edge into 3 segments (like a ruler)
+            const segmentLength = {
+                x: (p2.x - p1.x) / 3,
+                y: (p2.y - p1.y) / 3
+            };
+
+            // Points A, B, C, D (dividing the edge into thirds)
+            const A = p1;
+            const B = { x: p1.x + segmentLength.x, y: p1.y + segmentLength.y };
+            const C = { x: p1.x + 2 * segmentLength.x, y: p1.y + 2 * segmentLength.y };
+            const D = p2;
+
+            // For the outer edges, add points around the inner void
+            if (Math.abs(p1.x - p2.x) > Math.abs(p1.y - p2.y)) {
+                // Horizontal edge: Add points around the inner square
+                newPoints.push(A);
+                newPoints.push(B);
+                newPoints.push({ x: B.x, y: B.y - innerSize }); // Up
+                newPoints.push({ x: C.x, y: C.y - innerSize }); // Across
+                newPoints.push(C);
+                newPoints.push(D);
+            } else {
+                // Vertical edge: Add points around the inner square
+                newPoints.push(A);
+                newPoints.push(B);
+                newPoints.push({ x: B.x - innerSize, y: B.y }); // Left
+                newPoints.push({ x: C.x - innerSize, y: C.y }); // Down
+                newPoints.push(C);
+                newPoints.push(D);
+            }
+        }
+
+        // Close the shape
+        newPoints.push(points[points.length - 1]);
+
+        // Recurse for each smaller outer segment
+        return subdivide(newPoints, depth - 1, newSize);
+    }
+
+    return subdivide(outerSquare, iterations, size);
+}
+
+
+// Example usage:
+const points = getTSquareFractalOutline(3, 200, { x: 100, y: 100 });
+console.log(points);
+
+function generateTSquareSVG(points) {
+    let path = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+        path += ` L ${points[i].x} ${points[i].y}`;
+    }
+    return `
+        <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+            <path d="${path}" fill="none" stroke="blue" stroke-width="1"/>
+        </svg>
+    `;
+}
+
+document.documentElement.innerHTML  = generateTSquareSVG(points);
+</script>

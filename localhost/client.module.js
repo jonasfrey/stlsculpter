@@ -20,6 +20,9 @@ import { OrbitControls } from '/three.js-r126/examples/jsm/controls/OrbitControl
 import { STLExporter } from '/three.js-r126/examples/jsm/exporters/STLExporter.js';
 import { ConvexGeometry } from '/three.js-r126/examples/jsm/geometries/ConvexGeometry.js';
 import { SimplifyModifier } from '/three.js-r126/examples/jsm/modifiers/SimplifyModifier.js';
+import {
+    STLLoader
+} from '/three.js-r126/examples/jsm/loaders/STLLoader.js'
 
 import { BufferGeometryUtils } from '/three.js-r126/examples/jsm/utils/BufferGeometryUtils.js';
 import { Line2 } from '/three.js-r126/examples/jsm/lines/Line2.js';
@@ -323,6 +326,29 @@ let f_o_geometry_from_a_o_p_polygon_face = function(a_o_p){
 
 
 }
+function f_o_geometry_from_a_o_p(points) {
+    // 1. Create 2D shape (ignores Z)
+    const shape = new THREE.Shape();
+    shape.moveTo(points[0].n_x, points[0].n_y);
+    for (let i = 1; i < points.length; i++) {
+        shape.lineTo(points[i].n_x, points[i].n_y);
+    }
+
+    // 2. Generate geometry (triangulates in 2D)
+    const geometry = new THREE.ShapeGeometry(shape);
+
+    // 3. Apply Z-coordinates manually
+    const posAttr = geometry.getAttribute('position');
+    for (let i = 0; i < points.length; i++) {
+        posAttr.setZ(i, points[i].n_z); // Apply original Z
+    }
+    posAttr.needsUpdate = true;
+
+    // 4. Recompute normals (since we modified Z)
+    geometry.computeVertexNormals();
+
+    return geometry;
+}
 
 let a_o_function = [
     f_o_function(
@@ -380,7 +406,7 @@ let a_o_function = [
                 if (n_it_layer == 0 || n_it_layer == n_its_layer - 1) {
                     // only bottom and top face
                     a_o_geometry.push(
-                        f_o_geometry_from_a_o_p_polygon_face([f_o_vec(0, 0, a_o_p[0].n_z), ...a_o_p])
+                        f_o_geometry_from_a_o_p(a_o_p)
                     )
                 }
             }
@@ -3421,6 +3447,8 @@ let a_o_function = [
                 return geometry
 
             }
+
+
             let f_o_geometry_from_a_o_p_polygon_face = function(a_o_p){
 
                 // assuming the first array item is the center point of the polygon 
@@ -4580,7 +4608,7 @@ function createRegularPolygon(x, y, radius, corners, n_offset_radians = 0) {
 // import * as monaco from 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/+esm';
 
 
-let f_update_rendering = function(){
+let f_update_rendering = async function(){
     // console.log('Content changed:', o_monaco_editor.getValue());
     let s = o_monaco_editor.getValue();
     let s_f = `(${s})()`;
@@ -4591,7 +4619,7 @@ let f_update_rendering = function(){
     }
     try {
         
-        let a_o = eval(s_f);
+        let a_o = await eval(s_f);
         createThreeJSObjects(a_o);
     } catch (error) {
         console.error('Evaluation error:', error);
