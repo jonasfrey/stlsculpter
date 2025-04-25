@@ -172,9 +172,10 @@ function() {
         return a_o_mesh;
     }
     // Extrude settings
+    let n_extrude_base = 0.6;
     const extrudeSettings = {
         steps: 1,
-        depth: 0.6,
+        depth:n_extrude_base,
         bevelEnabled: false,
         bevelThickness: 0.1,
         bevelSize: 0.1,
@@ -211,7 +212,7 @@ function() {
     
     let n_radius_ring_inner = 2; 
     let n_radius_ring_outer = 3;
-    let o_extruded_mesh = f_o_extruded_ring(n_radius_ring_inner,n_radius_ring_outer, 2, 128);
+    let o_extruded_mesh = f_o_extruded_ring(n_radius_ring_inner,n_radius_ring_outer, n_extrude_base, 128);
     let o_mesh_ring = f_o_shaded_mesh(o_extruded_mesh);
     o_mesh_ring.position.set(
         Math.sin(n_tau/n_corners)*(n_radius_inner+n_radius_ring_inner/2), 
