@@ -1,13 +1,11 @@
-async function() {
+function() {
     
-    let o_mod = await import("./threejs_custom_extrusions.js");
 
-
-    let n_scl_x_cube = 3;
-    let n_scl_y_cube = 3;
-    let n_scl_z_cube = 3; 
-    let n_its_cube_x = 12;
-    let n_its_cube_y = 12;
+    let n_scl_x_cube = 10;
+    let n_scl_y_cube = 10;
+    let n_scl_z_cube = 10; 
+    let n_its_cube_x = 24;
+    let n_its_cube_y = 24;
     let a_o_mesh = []
     for(let n_it_cube_x = 0; n_it_cube_x <= n_its_cube_x; n_it_cube_x+=1){
         let n_it_cube_x_nor = n_it_cube_x / n_its_cube_x;
@@ -38,10 +36,10 @@ async function() {
                 Math.pow(n_its_cube_y*n_scl_y_cube, 2.),
             );
             let n_dist_nor = n_dist / n_dist_max;
-            n_dist_nor = 1.-n_dist_nor;
-            let ndnp = Math.pow(n_dist_nor, 2.);
-            let n_factor =  (nm1 == nm2) ? 3: 6;
-            n_scl_z_cube = 1+ndnp*n_factor;
+            //n_dist_nor = 1.-n_dist_nor;
+            let ndnp = n_dist_nor//Math.pow(n_dist_nor, 2.);
+            let n_factor =  (nm1 == nm2) ? 0.5:1.0;
+            n_scl_z_cube = 1+n_dist*n_factor;
 
             let o_geo = new THREE.BoxGeometry( n_scl_x_cube, n_scl_y_cube, n_scl_z_cube )
             let o_mesh = f_o_shaded_mesh(o_geo);
@@ -67,13 +65,13 @@ async function() {
     let n_radius_ring_inner = 2
     let n_radius_ring_outer = 4;
     
-    let o_extruded_mesh = o_mod.f_o_extruded_ring(n_radius_ring_inner,n_radius_ring_outer, 2, 128);
+    let o_extruded_mesh = f_o_extruded_ring(n_radius_ring_inner,n_radius_ring_outer, 2, 128);
     let o_mesh = f_o_shaded_mesh(o_extruded_mesh);
     o_mesh.position.set(
         4, 
         4, 
         0
     )
-    a_o_mesh.push(o_mesh);
+    // a_o_mesh.push(o_mesh);
             return a_o_mesh
 }
