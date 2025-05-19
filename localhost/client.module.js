@@ -29,6 +29,9 @@ import { Line2 } from '/three.js-r126/examples/jsm/lines/Line2.js';
 import { LineMaterial } from '/three.js-r126/examples/jsm/lines/LineMaterial.js';
 import { LineGeometry } from '/three.js-r126/examples/jsm/lines/LineGeometry.js';
 
+import { FontLoader } from '/three.js-r126/src/loaders/FontLoader.js';
+import { TextGeometry } from '/three.js-r126/src/geometries/TextGeometry.js';
+
 // import { Boolean } from '/three.js-r126/examples/jsm/math/BooleanOperation.js';
 // import { STLExporter } from '/three/STLExporter.js';
 // if you need more addons/examples download from here...

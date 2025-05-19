@@ -174,14 +174,14 @@ let f_a_o_mesh_cubicbezierboxregpoly = function(
         if(!n_radians_offset){
             let n_ang_degrees_inner_corner = ((n_its_corner-2)*180)/n_its_corner
             let n_ang_offset_radians = ((180-(n_ang_degrees_inner_corner/2))/360)*n_tau
-            console.log(n_ang_degrees_inner_corner/2);
+            // console.log(n_ang_degrees_inner_corner/2);
             n_radians_offset = n_ang_offset_radians
         }
         a_o_p.push(
             new THREE.Vector3(
                 Math.sin(n_it_corner_nor*n_tau+n_radians_offset)*n_radius,
                 Math.cos(n_it_corner_nor*n_tau+n_radians_offset)*n_radius,
-                0
+                0,
             )
         )
     }
@@ -609,7 +609,10 @@ let f_o_shape_star = function(
 
 let f_a_o_mesh_bezierring = function(
     n_its_corner = 3, 
-    f_n_radius = ()=>{
+    f_n_radius = (
+        n_it_corner_nor,
+        n_it_corner_nor2
+    )=>{
         return 10
     },
     n_radius_control_point = 10, 
@@ -625,7 +628,9 @@ let f_a_o_mesh_bezierring = function(
         let n_it_corner_nor_control = n_it_corner_control/n_its_corner;
         let n_radius = f_n_radius(
             n_it_corner_nor, 
+            n_it_corner_nor2
         );
+        
         let o_p1 = {
             x: Math.sin(n_it_corner_nor*n_tau)*n_radius,
             y: Math.cos(n_it_corner_nor*n_tau)*n_radius,
