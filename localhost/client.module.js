@@ -32,6 +32,8 @@ import { LineGeometry } from '/three.js-r126/examples/jsm/lines/LineGeometry.js'
 import { FontLoader } from '/three.js-r126/src/loaders/FontLoader.js';
 import { TextGeometry } from '/three.js-r126/src/geometries/TextGeometry.js';
 
+
+import * as o_mod_csg from 'https://cdn.jsdelivr.net/npm/three-csg-ts@3.2.0/+esm'
 // import { Boolean } from '/three.js-r126/examples/jsm/math/BooleanOperation.js';
 // import { STLExporter } from '/three/STLExporter.js';
 // if you need more addons/examples download from here...

@@ -2,6 +2,7 @@
 import * as THREE from '/three.js-r126/build/three.module.js';
 
 
+
 let f_o_shaded_mesh = function(
     o_geometry,
     o_material_options = {},
@@ -698,6 +699,54 @@ let f_a_o_mesh_layered_polygon = function(
     }
     return a_o_mesh
 }
+let f_a_o_mesh_hexagonal_triangle_tiling = function(
+    n_radius_inner,
+    n_radius_outer,
+    n_extrusion,
+){
+    let n_polygon_points = 3;
+    let n_nor_start = 0.;
+    let n_nor_end = 1.;
+
+    let a_o_mesh = [];
+    let n_its = 6;
+    let n_thick = n_radius_outer-n_radius_inner; 
+    let n_width = (n_radius_outer) * 2; // width of the triangle
+    let n_height = n_width * Math.sqrt(3)/2; // height of equilateral triangle
+    let n_radius = n_radius_outer;
+    let n_tau = Math.PI*2;
+    for(let n_it = 0; n_it < n_its; n_it+=1){
+        let n_it_nor = n_it / n_its;
+        let n_ang = n_it_nor * Math.PI*2;
+        let o = {
+            x: Math.sin(n_ang)*n_radius,
+            y: Math.cos(n_ang)*n_radius
+        }
+        let o_geo = f_o_extruded_ring(
+            n_radius_inner, 
+            n_radius_outer, 
+            n_extrusion, 
+            n_polygon_points,
+            n_nor_start,
+            n_nor_end
+        )
+        let o_mesh = f_o_shaded_mesh(o_geo);
+        o_mesh.position.set(
+            o.x, 
+            o.y,
+            0.
+        );
+        o_mesh.rotation.set(
+            0,
+            0,
+            n_it_nor*n_tau + n_tau/2
+        );
+        a_o_mesh.push(
+            o_mesh
+        );
+    }
+    return a_o_mesh;
+}
 export {
     f_o_shape_star,
     f_o_extruded_ring, 
@@ -711,5 +760,6 @@ export {
     f_a_o_mesh_boxline_layered,
     f_a_o_mesh_boxline, 
     f_a_o_mesh_cubicbezierboxregpoly, 
-    f_a_o_mesh_bezierring
+    f_a_o_mesh_bezierring, 
+    f_a_o_mesh_hexagonal_triangle_tiling
 }
