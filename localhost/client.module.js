@@ -18,11 +18,20 @@ import {
 import * as THREE from '/three.js-r126/build/three.module.js';
 import { OrbitControls } from '/three.js-r126/examples/jsm/controls/OrbitControls.js';
 import { STLExporter } from '/three.js-r126/examples/jsm/exporters/STLExporter.js';
+import { OBJExporter } from '/three.js-r126/examples/jsm/exporters/OBJExporter.js';
 import { ConvexGeometry } from '/three.js-r126/examples/jsm/geometries/ConvexGeometry.js';
 import { SimplifyModifier } from '/three.js-r126/examples/jsm/modifiers/SimplifyModifier.js';
 import {
     STLLoader
 } from '/three.js-r126/examples/jsm/loaders/STLLoader.js'
+
+import {
+    SVGLoader
+} from '/three.js-r126/examples/jsm/loaders/SVGLoader.js'
+
+
+import {DxfParser} from "./npm/dxf-parser@1.1.2/+esm.mjs"
+// import {DxfParser} from "https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/+esm.mjs"
 
 import { BufferGeometryUtils } from '/three.js-r126/examples/jsm/utils/BufferGeometryUtils.js';
 import { Line2 } from '/three.js-r126/examples/jsm/lines/Line2.js';
@@ -4421,7 +4430,8 @@ function f_o_mesh_torus(o_center, n_radius, n_thickness = 0.5, n_segments = 32, 
 }
 
 let f_generate_stl = function(){
-    const o_exporter = new STLExporter();
+    // const o_exporter = new STLExporter();
+    const o_exporter = new OBJExporter();
     
     // Create a temporary group to hold all meshes
     const o_temp_group = new THREE.Group();
@@ -4448,7 +4458,7 @@ let f_download_stl = function(){
 
     const o_el_a = document.createElement('a');
     o_el_a.href = URL.createObjectURL(o_blob_stl);
-    o_el_a.download = `${o_state.s_name}.stl`;
+    o_el_a.download = `${o_state.s_name}.obj`;
     o_el_a.click();
     
 }

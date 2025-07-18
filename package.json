@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "dxf-parser": "^1.1.2"
+  }
+}
