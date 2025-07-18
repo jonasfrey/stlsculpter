@@ -2,7 +2,6 @@ async function() {
 
     function dxfToCurvePath(dxfEntities) {
         const curvePath = new THREE.CurvePath();
-    debugger
         for (const entity of dxfEntities) {
             if (entity.type === "LINE") {
                 const [start, end] = entity.vertices;
@@ -52,7 +51,7 @@ try {
     const dxf = parser.parseSync(s_texdt);
     
 
-
+    debugger
     const pathCurve = dxfToCurvePath(dxf.entities); // your parsed DXF array
 
     const triangleShape = new THREE.Shape();
