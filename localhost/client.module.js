@@ -9,7 +9,6 @@ import {
 import {
     f_o_html_from_o_js,
     f_o_proxified_and_add_listeners,
-    f_o_js_a_o_toast,
     f_o_toast,
     o_state_a_o_toast,
     s_css_a_o_toast
@@ -4004,15 +4003,12 @@ let f_add_tag = function(){
 globalThis.f_o_toast = f_o_toast
 let o_el_svg = null;
 // then we build the html
-f_o_toast('this is info', 'info', 5000)
-f_o_toast('this is warning','warning', 5000)
-f_o_toast('this is error','error', 5000)
-f_o_toast('this will take a while','loading', 5000)
+
 
 
 let o = await f_o_html_from_o_js(
     {
-        class: "test",
+        class: "workspace",
         style: "display: flex;flex-direction: row;",
         f_a_o: ()=>{
             return [
@@ -4031,43 +4027,85 @@ let o = await f_o_html_from_o_js(
                                     return [
                                         {
                                             class: "inputs", 
-                                            style: "position: absolute;top:0",
+                                            style: "position: absolute;",
                                             f_a_o: ()=>[
-                                                f_o_js_a_o_toast(o_state),
+                                                {
+                                                    class: 'a_o_toast',
+                                                    'aria-live': 'polite',
+                                                    a_s_prop_sync: 'a_o_toast',
+                                                    f_a_o: () => o_state.a_o_toast.map((toast) => ({
+                                                        class: toast.s_class,
+                                                        f_s_innerText: () => toast.s_message,
+                                                        f_b_render: () => toast.b_render,
+                                                        onclick: () => { o_state.a_o_toast = o_state.a_o_toast.filter(item => item !== toast); },
+                                                    })),
+                                                },
+                                                {
+                                                    class: 'studio-heading',
+                                                    innerText: 'STL Sculpter',
+                                                },
+                                                {
+                                                    class: 'studio-caption',
+                                                    innerText: 'A playground for mathematical form',
+                                                },
+                                                {
+                                                    s_tag: 'label',
+                                                    class: 'design-label',
+                                                    for: 'design-select',
+                                                    innerText: 'Design',
+                                                },
+                                                {
+                                                    s_tag: 'label',
+                                                    class: 'name-label',
+                                                    for: 'model-name',
+                                                    innerText: 'Model name',
+                                                },
                                                 {
                                                     s_tag: "button", 
-                                                    innerText: "upload to sketchfab", 
+                                                    class: 'share-button',
+                                                    innerText: "Share",
+                                                    title: 'Share on Sketchfab',
+                                                    'aria-controls': 'share-panel',
+                                                    'aria-expanded': String(o_state.b_show_sketchfab_upload_inputs),
                                                     onclick: ()=>{
                                                         o_state.b_show_sketchfab_upload_inputs = !o_state.b_show_sketchfab_upload_inputs;
                                                     }, 
                                                     a_s_prop_sync: 'b_show_sketchfab_upload_inputs',
                                                 },
                                                 {
+                                                    id: 'share-panel',
+                                                    class: 'share-panel',
                                                     f_b_render:()=> o_state.b_show_sketchfab_upload_inputs, 
                                                     a_s_prop_sync: 'b_show_sketchfab_upload_inputs',
                                                     f_a_o: ()=>{
                                                         return [
                                                             {
-                                                                s_tag: 'label', 
+                                                                s_tag: 'label',
+                                                                for: 'share-name',
                                                                 innerText: "Name"
                                                             },
                                                             {
                                                                 s_tag: 'input', 
+                                                                id: 'share-name',
+                                                                'aria-label': 'Name',
                                                                 a_s_prop_sync: 's_name',
                                                             },
                                                             {
                                                                 s_tag: 'label', 
+                                                                for: "share-description",
                                                                 innerText: "Description"
                                                             },
                                                             {
                                                                 s_tag: 'textarea', 
+                                                                id: 'share-description',
+                                                                'aria-label': 'Description',
                                                                 a_s_prop_sync: 's_description',
                                                                 rows: 5, 
                                                                 cols: 20,
                                                             },
                                                             {
                                                                 s_tag: "button",
-                                                                innerText: "generate description with AI (deepseek)", 
+                                                                innerText: "Generate description · DeepSeek",
                                                                 onclick: ()=>{
                                                                     const url = 'https://api.deepseek.com/chat/completions';  
                                                                     const requestData = {
@@ -4140,13 +4178,15 @@ let o = await f_o_html_from_o_js(
                                                                 innerText: "Tags"
                                                             },
                                                             {
+                                                                class: 'tag-list',
                                                                 a_s_prop_sync: 'a_s_tag',
                                                                 f_a_o: ()=>{
                                                                     return o_state.a_s_tag.map(s=>{
                                                                         return {
-                                                                            s_tag: 'input', 
-                                                                            readonly: 'true', 
-                                                                            value:`${s} x`, 
+                                                                            s_tag: 'button',
+                                                                            class: 'tag-chip',
+                                                                            'aria-label': `Remove tag ${s}`,
+                                                                            innerText: `${s} ×`,
                                                                             onclick: ()=>{
                                                                                 o_state.a_s_tag 
                                                                                     = o_state.a_s_tag.filter(
@@ -4159,6 +4199,8 @@ let o = await f_o_html_from_o_js(
                                                             },
                                                             {
                                                                 s_tag: 'input', 
+                                                                'aria-label': 'New tag',
+                                                                placeholder: 'Add a tag…',
                                                                 a_s_prop_sync: 's_tag',  
                                                                 onkeydown: (o_e)=>{
                                                                     if(o_e.key == 'Enter'){
@@ -4168,30 +4210,39 @@ let o = await f_o_html_from_o_js(
                                                             },
                                                             {
                                                                 s_tag: "button", 
-                                                                innerText: "add tag",
+                                                                innerText: "Add tag",
                                                                 onclick: ()=>{
                                                                     f_add_tag();
                                                                 }
                                                             },
                                                             {
                                                                 s_tag: 'label', 
-                                                                innerText: "API Token (sketchfab)"
+                                                                for: "sketchfab-token",
+                                                                innerText: "Sketchfab API token"
                                                             },
                                                             {
                                                                 s_tag: 'input', 
+                                                                id: 'sketchfab-token',
+                                                                'aria-label': 'Sketchfab API token',
+                                                                type: 'password',
                                                                 a_s_prop_sync: 's_api_token_sketchfab',
                                                             },
                                                             {
                                                                 s_tag: 'label', 
-                                                                innerText: "API Token (Deepseek)"
+                                                                for: "deepseek-token",
+                                                                innerText: "DeepSeek API token"
                                                             },
                                                             {
                                                                 s_tag: 'input', 
+                                                                id: 'deepseek-token',
+                                                                'aria-label': 'DeepSeek API token',
+                                                                type: 'password',
                                                                 a_s_prop_sync: 's_api_token_deepseek',
                                                             },
                                                             {
                                                                 s_tag: 'button', 
-                                                                innerText: "UPLOAD!", 
+                                                                class: 'primary-button',
+                                                                innerText: 'Publish to Sketchfab',
                                                                 onclick: async ()=>{
 
                                                                     let o_license =     {
@@ -4281,14 +4332,16 @@ let o = await f_o_html_from_o_js(
                                                 },
                                                 {
                                                     s_tag: "button", 
-                                                    innerText: "download", 
+                                                    class: 'export-button primary-button',
+                                                    innerText: 'Export OBJ',
                                                     onclick: ()=>{
                                                         f_generate_stl();
                                                         f_download_stl();
                                                     }
                                                 }, 
                                                 {
-                                                    s_tag: "select", 
+                                                    s_tag: "select",
+                                                    id: "design-select",
                                                     f_a_o: ()=>{
                                                         return [
                                                             ...o_state.a_o_function.map(o=>{
@@ -4301,7 +4354,7 @@ let o = await f_o_html_from_o_js(
                                                             {
                                                                 s_tag: 'option', 
                                                                 value: 'new', 
-                                                                innerText: "new"
+                                                                innerText: "+ New design"
                                                             }
                                                         ]
                                                     }, 
@@ -4319,10 +4372,13 @@ let o = await f_o_html_from_o_js(
                                                     }
                                                 }, 
                                                 {
-                                                    s_tag: "input", 
+                                                    s_tag: "input",
+                                                    id: "model-name",
+                                                    placeholder: "Name your model",
                                                     a_s_prop_sync: `s_name`
                                                 }, 
                                                 {
+                                                    class: 'parameter-controls',
                                                     f_a_o: ()=>{
                                                         let a_s_prop = Object.keys(o_state.ov);
                                                         return a_s_prop.map(s_prop=>{
@@ -4476,7 +4532,14 @@ function createThreeJSObjects(a_o_mesh) {
         // o_scene.add(o)
     })
 
-    // fitCameraToGroup(o_camera, o_world_group);
+    // Orbit around the model center while preserving the user's viewing offset.
+    const bounds = new THREE.Box3().setFromObject(o_world_group);
+    if (!bounds.isEmpty()) {
+        const center = bounds.getCenter(new THREE.Vector3());
+        o_camera.position.add(center.clone().sub(o_controls.target));
+        o_controls.target.copy(center);
+        o_controls.update();
+    }
 }
 
 
@@ -4693,6 +4756,8 @@ const o_camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000); // Aspect ratio 
 globalThis.o_camera = o_camera
 
 
+// Generated geometry uses Z as its vertical axis. OrbitControls reads camera.up.
+o_camera.up.set(0, 0, 1);
 o_camera.position.set(3.6577695813301743, -431.2580386693436,  237.3374585409182)
 
 const o_renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -4748,10 +4813,7 @@ function animate() {
     //     }
     // });
 
-    if (o_scene && o_camera && o_renderer) {
-        o_renderer.render(o_scene, o_camera);
-    }
-    // o_controls.update();
+    o_controls.update();
     o_renderer.render(o_scene, o_camera);
 }
 animate();
@@ -4760,7 +4822,7 @@ animate();
 
 window.onresize = function(){
     f_resize_renderer();
-    o_monaco_editor.layout();
+    o_monaco_editor?.layout();
 }
 // for(let n = 0; n< 100; n+=1){
 
